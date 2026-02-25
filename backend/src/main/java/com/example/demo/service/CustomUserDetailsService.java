@@ -1,7 +1,7 @@
 package com.example.demo.service;
 
-import com.example.demo.entity.User;
-import com.example.demo.repository.UserRepository;
+import com.example.demo.entity.Staff;
+import com.example.demo.repository.StaffRepository;
 import com.example.demo.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,54 +12,51 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service để load thông tin User từ database
+ * Service to load Staff info from database
  * 
- * UserDetailsService là interface của Spring Security, được gọi khi:
- * - User đăng nhập (để verify password)
- * - JWT token được validate (để load user info)
- * 
- * Spring Security sẽ tự động tìm và sử dụng bean này
+ * UserDetailsService is Spring Security interface, called when:
+ * - Staff login (to verify password)
+ * - JWT token is validated (to load staff info)
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CustomUserDetailsService implements UserDetailsService {
-    
-    private final UserRepository userRepository;
-    
+
+    private final StaffRepository staffRepository;
+
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        log.debug("Đang tìm user với mã nhân viên: {}", username);
-        
-        User user = userRepository.findByMaNhanVienWithRole(username)
+        log.debug("Finding staff with code: {}", username);
+
+        Staff staff = staffRepository.findByStaffCode(username)
                 .orElseThrow(() -> {
-                    log.warn("Không tìm thấy user với mã nhân viên: {}", username);
+                    log.warn("Staff not found with code: {}", username);
                     return new UsernameNotFoundException(
-                            "Không tìm thấy người dùng với mã nhân viên: " + username
-                    );
+                            "Staff not found with code: " + username);
                 });
-        
-        if (user.getTrangThai() == null || !user.getTrangThai()) {
-            log.warn("Tài khoản {} đã bị khóa", username);
-            throw new UsernameNotFoundException("Tài khoản đã bị khóa: " + username);
+
+        if (staff.getIsActive() == null || !staff.getIsActive()) {
+            log.warn("Account {} is disabled", username);
+            throw new UsernameNotFoundException("Account is disabled: " + username);
         }
-        
-        log.debug("Đã tìm thấy user: {} với role: {}", user.getHoTen(), user.getRole().getRoleName());
-        
-        return new CustomUserDetails(user);
+
+        log.debug("Found staff: {} with role: {}", staff.getFullName(), staff.getRole().getRoleName());
+
+        return new CustomUserDetails(staff);
     }
-    
+
     @Transactional(readOnly = true)
     public UserDetails loadUserById(Integer id) {
-        log.debug("Đang tìm user với ID: {}", id);
-        
-        User user = userRepository.findById(id)
+        log.debug("Finding staff with ID: {}", id);
+
+        Staff staff = staffRepository.findById(id)
                 .orElseThrow(() -> {
-                    log.warn("Không tìm thấy user với ID: {}", id);
-                    return new UsernameNotFoundException("Không tìm thấy người dùng với ID: " + id);
+                    log.warn("Staff not found with ID: {}", id);
+                    return new UsernameNotFoundException("Staff not found with ID: " + id);
                 });
-        
-        return new CustomUserDetails(user);
+
+        return new CustomUserDetails(staff);
     }
 }

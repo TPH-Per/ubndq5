@@ -57,10 +57,28 @@ const routes: RouteRecordRaw[] = [
                 meta: { title: 'Quản lý hàng chờ' }
             },
             {
+                path: 'hoso',
+                name: 'HoSoManagement',
+                component: () => import('@/views/staff/HoSoManagement.vue'),
+                meta: { title: 'Quản lý hồ sơ' }
+            },
+            {
                 path: 'documents',
                 name: 'FileProcessing',
                 component: FileProcessing,
                 meta: { title: 'Xử lý hồ sơ' }
+            },
+            {
+                path: 'feedbacks',
+                name: 'FeedbackManagement',
+                component: () => import('@/views/staff/FeedbackManagement.vue'),
+                meta: { title: 'Tiếp nhận phản ánh' }
+            },
+            {
+                path: 'profile',
+                name: 'StaffProfile',
+                component: () => import('@/views/shared/ProfilePage.vue'),
+                meta: { title: 'Tài khoản cá nhân' }
             }
         ]
     },
@@ -100,10 +118,22 @@ const routes: RouteRecordRaw[] = [
                 meta: { title: 'Quản lý chuyên môn' }
             },
             {
+                path: 'procedures',
+                name: 'ProcedureManagement',
+                component: () => import('@/views/admin/ProcedureManagement.vue'),
+                meta: { title: 'Quản lý thủ tục' }
+            },
+            {
                 path: 'reports',
                 name: 'Reports',
                 component: Reports,
                 meta: { title: 'Báo cáo & Góp ý' }
+            },
+            {
+                path: 'profile',
+                name: 'AdminProfile',
+                component: () => import('@/views/shared/ProfilePage.vue'),
+                meta: { title: 'Tài khoản cá nhân' }
             }
         ]
     },

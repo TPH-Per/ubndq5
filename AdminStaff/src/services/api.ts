@@ -333,3 +333,345 @@ export const chuyenMonApi = {
     delete: (id: number) =>
         api.delete<ApiResponse<null>>(`/admin/chuyenmons/${id}`),
 };
+
+// =============================================
+// LOAI THU TUC API - Quản lý loại thủ tục
+// =============================================
+
+export interface LoaiThuTucData {
+    id: number;
+    maThuTuc: string;
+    tenThuTuc: string;
+    moTa: string | null;
+    chuyenMonId: number;
+    tenChuyenMon: string;
+    thoiGianXuLy: number;
+    giayToYeuCau: string | null;
+    formSchema: Record<string, unknown> | null;
+    thuTu: number;
+    trangThai: boolean;
+    ngayTao: string;
+    soHoSo: number;
+}
+
+export interface CreateLoaiThuTucRequest {
+    maThuTuc: string;
+    tenThuTuc: string;
+    moTa?: string;
+    chuyenMonId: number;
+    thoiGianXuLy?: number;
+    giayToYeuCau?: string;
+    formSchema?: Record<string, unknown>;
+    thuTu?: number;
+}
+
+export interface UpdateLoaiThuTucRequest {
+    tenThuTuc?: string;
+    moTa?: string;
+    chuyenMonId?: number;
+    thoiGianXuLy?: number;
+    giayToYeuCau?: string;
+    formSchema?: Record<string, unknown>;
+    thuTu?: number;
+    trangThai?: boolean;
+}
+
+export const loaiThuTucApi = {
+    // Lấy danh sách tất cả loại thủ tục (Admin)
+    getAll: () =>
+        api.get<ApiResponse<LoaiThuTucData[]>>('/admin/loaithutucs'),
+
+    // Lấy loại thủ tục theo ID
+    getById: (id: number) =>
+        api.get<ApiResponse<LoaiThuTucData>>(`/admin/loaithutucs/${id}`),
+
+    // Lấy loại thủ tục theo chuyên môn
+    getByChuyenMon: (chuyenMonId: number) =>
+        api.get<ApiResponse<LoaiThuTucData[]>>(`/admin/loaithutucs/by-chuyenmon/${chuyenMonId}`),
+
+    // Tạo loại thủ tục mới
+    create: (data: CreateLoaiThuTucRequest) =>
+        api.post<ApiResponse<LoaiThuTucData>>('/admin/loaithutucs', data),
+
+    // Cập nhật loại thủ tục
+    update: (id: number, data: UpdateLoaiThuTucRequest) =>
+        api.put<ApiResponse<LoaiThuTucData>>(`/admin/loaithutucs/${id}`, data),
+
+    // Xóa loại thủ tục (soft delete)
+    delete: (id: number) =>
+        api.delete<ApiResponse<null>>(`/admin/loaithutucs/${id}`),
+};
+
+// Public API cho citizens (không cần đăng nhập)
+export const publicLoaiThuTucApi = {
+    // Lấy danh sách loại thủ tục đang hoạt động
+    getAll: () =>
+        api.get<ApiResponse<LoaiThuTucData[]>>('/public/loaithutucs'),
+
+    // Lấy loại thủ tục theo ID
+    getById: (id: number) =>
+        api.get<ApiResponse<LoaiThuTucData>>(`/public/loaithutucs/${id}`),
+
+    // Lấy loại thủ tục theo chuyên môn
+    getByChuyenMon: (chuyenMonId: number) =>
+        api.get<ApiResponse<LoaiThuTucData[]>>(`/public/loaithutucs/by-chuyenmon/${chuyenMonId}`),
+};
+
+// =============================================
+// QUEUE MANAGEMENT API - Staff quản lý hàng chờ
+// =============================================
+
+export interface LichHenData {
+    id: number;
+    maLichHen: string;
+    soThuTu: number;
+    soThuTuDisplay: string;
+    cccd: string;
+    hoTenCongDan: string;
+    soDienThoai: string | null;
+    tenThuTuc: string;
+    maThuTuc: string;
+    tenQuay: string;
+    maQuay: string;
+    ngayHen: string;
+    thoiGianDuKien: string | null;
+    thoiGianGoiSo: string | null;
+    thoiGianBatDauXuLy: string | null;
+    thoiGianKetThuc: string | null;
+    trangThai: number;
+    trangThaiText: string;
+    tenNhanVienXuLy: string | null;
+    lyDoHuy: string | null;
+}
+
+export interface QueueDashboardData {
+    counterId: number;
+    counterName: string;
+    counterCode: string;
+    currentProcessing: ApplicationData | null;
+    waitingList: ApplicationData[];
+    totalWaiting: number;
+    totalCompleted: number;
+    totalCancelled: number;
+    averageProcessingTime: number | null;
+}
+
+// Application data from queue response
+export interface ApplicationData {
+    id: number;
+    applicationCode: string;
+    procedureId: number;
+    procedureCode: string;
+    procedureName: string;
+    citizenId: string;
+    citizenName: string;
+    citizenPhone: string | null;
+    zaloAccountId: number | null;
+    zaloName: string | null;
+    currentPhase: number;
+    phaseName: string;
+    queueNumber: number;
+    queuePrefix: string;
+    queueDisplay: string;
+    appointmentDate: string | null;
+    expectedTime: string | null;
+    deadline: string | null;
+    priority: number;
+    priorityName: string;
+    cancelReason: string | null;
+    cancelType: number | null;
+    createdAt: string;
+    updatedAt: string | null;
+}
+
+export interface QueueStatusRequest {
+    trangThai?: number;
+    lyDo?: string;
+    ghiChu?: string;
+}
+
+export const queueApi = {
+    // Lấy dashboard tổng hợp (quầy, lượt đang xử lý, danh sách chờ, thống kê)
+    getDashboard: () =>
+        api.get<ApiResponse<QueueDashboardData>>('/staff/queue/dashboard'),
+
+    // Lấy danh sách người đang chờ
+    getWaitingList: () =>
+        api.get<ApiResponse<LichHenData[]>>('/staff/queue/waiting'),
+
+    // Lấy lượt đang xử lý hiện tại
+    getCurrentProcessing: () =>
+        api.get<ApiResponse<LichHenData | null>>('/staff/queue/current'),
+
+    // Gọi số tiếp theo (hoặc số cụ thể)
+    callNext: (id?: number) => api.post<ApiResponse<LichHenData>>('/staff/queue/call-next', { id }),
+
+    // Lấy danh sách slot hẹn bổ sung
+    getSlots: (date: string) => api.get<ApiResponse<{
+        morning: { time: string; booked: boolean }[];
+        afternoon: { time: string; booked: boolean }[];
+    }>>('/staff/queue/slots', { params: { date } }),
+
+    // Hẹn bổ sung
+    supplement: (id: number, data: { appointmentDate: string; appointmentTime: string }) =>
+        api.post<ApiResponse<LichHenData>>(`/staff/queue/${id}/supplement`, data),
+
+    // Tiếp nhận hồ sơ (chuyển trạng thái sang RECEIVED)
+    receive: (id: number, data?: { appointmentDate: string; expectedTime: string }) =>
+        api.post<ApiResponse<LichHenData>>(`/staff/queue/${id}/receive`, data),
+
+    // Hoàn thành lượt đang xử lý
+    complete: (id: number, ghiChu?: string) =>
+        api.post<ApiResponse<LichHenData>>(`/staff/queue/${id}/complete`, { ghiChu }),
+
+    // Hủy / Đánh dấu khách không đến
+    cancel: (id: number, lyDo: string, trangThai?: number) =>
+        api.post<ApiResponse<LichHenData>>(`/staff/queue/${id}/cancel`, {
+            lyDo,
+            trangThai: trangThai ?? 3  // Default: KHONG_DEN = 3
+        }),
+};
+
+// =============================================
+// HOSO MANAGEMENT API - Staff quản lý hồ sơ
+// =============================================
+
+export interface HoSoData {
+    id: number;
+    maHoSo: string;
+    cccd: string;
+    hoTenCongDan: string;
+    soDienThoai: string | null;
+    tenThuTuc: string;
+    maThuTuc: string;
+    tenQuay: string;
+    trangThai: number;
+    trangThaiText: string;
+    doUuTien: number;
+    ngayNop: string;
+    hanXuLy: string | null;
+    ngayHoanThanh: string | null;
+    nguonGoc: string;
+    maLichHen: string | null;
+}
+
+export interface HoSoDetailData extends HoSoData {
+    email: string | null;
+    diaChi: string | null;
+    loaiThuTucId: number;
+    thoiGianXuLyQuyDinh: number;
+    thongTinHoSo: Record<string, unknown> | null;
+    fileDinhKem: Record<string, unknown>[] | null;
+    ghiChu: string | null;
+    lichHen: LichHenData | null;
+    lichSuXuLy: {
+        nguoiXuLy: string;
+        hanhDong: string;
+        trangThaiCu: string;
+        trangThaiMoi: string;
+        noiDung: string;
+        thoiGian: string;
+    }[];
+}
+
+export interface HoSoDashboardData {
+    tongSoHoSo: number;
+    choXuLy: number;
+    dangXuLy: number;
+    hoanThanh: number;
+    treHan: number;
+}
+
+export interface CreateHoSoRequest {
+    cccd: string;
+    hoTen: string;
+    soDienThoai?: string;
+    email?: string;
+    diaChi?: string;
+    loaiThuTucId: number;
+    thongTinHoSo?: Record<string, unknown>;
+    fileDinhKem?: Record<string, unknown>[];
+    ghiChu?: string;
+    doUuTien?: number;
+    confirmDuplicate?: boolean;
+}
+
+export interface UpdateHoSoRequest {
+    hoTen?: string;
+    soDienThoai?: string;
+    diaChi?: string;
+    thongTinHoSo?: Record<string, unknown>;
+    fileDinhKem?: Record<string, unknown>[];
+    ghiChu?: string;
+    doUuTien?: number;
+    ngayHoanThanh?: string;
+}
+
+export interface ChangeStatusRequest {
+    trangThaiMoi: number;
+    noiDung?: string;
+    ghiChu?: string;
+    ngayHen?: string;
+    gioHen?: string;
+}
+
+export const hoSoApi = {
+    // Lấy dashboard thống kê
+    getDashboard: () =>
+        api.get<ApiResponse<HoSoDashboardData>>('/staff/hoso/dashboard'),
+
+    // Lấy danh sách hồ sơ (có thể filter theo trạng thái)
+    getList: (trangThai?: number) =>
+        api.get<ApiResponse<HoSoData[]>>('/staff/hoso', { params: { trangThai } }),
+
+    // Lấy chi tiết hồ sơ
+    getById: (id: number) =>
+        api.get<ApiResponse<HoSoDetailData>>(`/staff/hoso/${id}`),
+
+    // Tạo hồ sơ mới
+    create: (data: CreateHoSoRequest) =>
+        api.post<ApiResponse<HoSoData>>('/staff/hoso', data),
+
+    // Cập nhật thông tin hồ sơ
+    update: (id: number, data: UpdateHoSoRequest) =>
+        api.put<ApiResponse<HoSoData>>(`/staff/hoso/${id}`, data),
+
+    // Tạo hồ sơ từ lịch hẹn
+    createFromLichHen: (lichHenId: number) =>
+        api.post<ApiResponse<HoSoData>>(`/staff/hoso/from-lichhen/${lichHenId}`),
+
+    // Cập nhật trạng thái
+    updateStatus: (id: number, data: ChangeStatusRequest) =>
+        api.put<ApiResponse<HoSoData>>(`/staff/hoso/${id}/status`, data),
+};
+
+// =============================================
+// FEEDBACK API - Staff quản lý phản ánh
+// =============================================
+
+export interface Feedback {
+    id: number;
+    type: number;
+    title: string;
+    content: string;
+    citizenName: string;
+    citizenId: string;
+    applicationCode: string;
+    status: number;
+    createdAt: string;
+    replies: Reply[];
+}
+
+export interface Reply {
+    id: number;
+    content: string;
+    staffName: string;
+    createdAt: string;
+}
+
+export const feedbackApi = {
+    getList: (status?: number) => api.get<ApiResponse<Feedback[]>>('/staff/feedbacks', { params: { status } }),
+    getDetail: (id: number) => api.get<ApiResponse<Feedback>>(`/staff/feedbacks/${id}`),
+    reply: (id: number, content: string) => api.post<ApiResponse<Feedback>>(`/staff/feedbacks/${id}/reply`, { content })
+};
+

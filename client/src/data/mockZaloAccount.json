@@ -1,0 +1,40 @@
+{
+    "zaloUser": {
+        "id": "zalo_user_001",
+        "name": "Nguyễn Văn Zalo",
+        "avatar": "https://s120-ava-talk.zadn.vn/default_avatar.png",
+        "phone": "0901234567"
+    },
+    "citizen": {
+        "citizenId": "012345678912",
+        "fullName": "Nguyễn Văn Zalo",
+        "phone": "0901234567",
+        "email": "nguyenvanzalo@gmail.com",
+        "dateOfBirth": "1990-01-15",
+        "address": "123 Đường Trần Hưng Đạo, Quận 5, TP.HCM"
+    },
+    "testAccounts": [
+        {
+            "zaloId": "zalo_user_001",
+            "zaloName": "Nguyễn Văn Zalo",
+            "citizenId": "012345678912",
+            "citizenName": "Nguyễn Văn Zalo",
+            "phone": "0901234567"
+        },
+        {
+            "zaloId": "zalo_user_002",
+            "zaloName": "Trần Thị Hoa",
+            "citizenId": "098765432109",
+            "citizenName": "Trần Thị Hoa",
+            "phone": "0987654321"
+        },
+        {
+            "zaloId": "zalo_user_003",
+            "zaloName": "Lê Văn Minh",
+            "citizenId": "123456789012",
+            "citizenName": "Lê Văn Minh",
+            "phone": "0912345678"
+        }
+    ],
+    "_description": "This file contains mock Zalo account data for testing. In production, this data comes from Zalo Mini App SDK."
+}

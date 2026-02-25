@@ -1,12 +1,12 @@
 package com.example.demo.service;
 
+import com.example.demo.dto.request.ChangePasswordRequest;
 import com.example.demo.dto.request.LoginRequest;
+import com.example.demo.dto.request.UpdateProfileRequest;
 import com.example.demo.dto.response.LoginResponse;
 import com.example.demo.dto.response.UserResponse;
-import com.example.demo.entity.User;
-import com.example.demo.exception.AppException;
-import com.example.demo.exception.ErrorCode;
-import com.example.demo.repository.UserRepository;
+import com.example.demo.entity.Staff;
+import com.example.demo.repository.StaffRepository;
 import com.example.demo.security.CustomUserDetails;
 import com.example.demo.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
@@ -15,124 +15,155 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-/**
- * Service xử lý Authentication (đăng nhập, đăng xuất)
- * 
- * Flow đăng nhập:
- * 1. Nhận LoginRequest (maNhanVien, password)
- * 2. Xác thực bằng AuthenticationManager
- * 3. Nếu đúng → Tạo JWT token
- * 4. Trả về LoginResponse (token + user info)
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
-    
+
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
-    private final UserRepository userRepository;
-    
+    private final StaffRepository staffRepository;
+    private final PasswordEncoder passwordEncoder;
+
     /**
-     * Xử lý đăng nhập
-     * 
-     * @param request Chứa maNhanVien và password
-     * @return LoginResponse chứa JWT token và thông tin user
+     * Login with staff code and password
      */
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        log.info("Đang xử lý đăng nhập cho: {}", request.getMaNhanVien());
-        
-        // Bước 1: Xác thực bằng Spring Security
-        // AuthenticationManager sẽ gọi CustomUserDetailsService.loadUserByUsername()
-        // và so sánh password với passwordHash trong DB
-        // Nếu sai → Spring throw BadCredentialsException → GlobalExceptionHandler catch
+        log.info("Login attempt for staff: {}", request.getStaffCode());
+
+        // Authenticate using Spring Security
         Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(
-                request.getMaNhanVien(),
-                request.getPassword()
-            )
-        );
-        
-        // Bước 2: Lưu authentication vào SecurityContext
+                new UsernamePasswordAuthenticationToken(
+                        request.getStaffCode(),
+                        request.getPassword()));
+
+        // Set authentication to SecurityContext
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        
-        // Bước 3: Lấy thông tin user từ authentication
+
+        // Get staff info from authentication
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        User user = userDetails.getUser();
-        
-        // Bước 4: Cập nhật thời gian đăng nhập
-        user.setLanDangNhapCuoi(LocalDateTime.now());
-        userRepository.save(user);
-        
-        // Bước 5: Tạo JWT token
-        String token = jwtUtils.generateToken(
-            user.getId(),
-            user.getMaNhanVien(),
-            user.getRole().getRoleName()
-        );
-        
-        // Bước 6: Tạo UserResponse để trả về (không chứa password)
-        UserResponse userResponse = mapToUserResponse(user);
-        
-        log.info("Đăng nhập thành công: {} - Role: {}", user.getHoTen(), user.getRole().getRoleName());
-        
-        // Bước 7: Trả về response
+        Staff staff = userDetails.getStaff();
+
+        // Update last login time
+        staff.setUpdatedAt(LocalDateTime.now());
+        staffRepository.save(staff);
+
+        // Generate JWT token
+        String accessToken = jwtUtils.generateToken(authentication);
+
+        // Map to response
+        UserResponse userResponse = mapToUserResponse(staff);
+
+        log.info("Login successful for staff: {}", staff.getStaffCode());
+
         return LoginResponse.builder()
-                .token(token)
+                .token(accessToken)
                 .tokenType("Bearer")
                 .expiresIn(jwtUtils.getExpirationTime())
                 .user(userResponse)
                 .build();
     }
-    
+
     /**
-     * Lấy thông tin user hiện tại đang đăng nhập
-     * 
-     * @return UserResponse của user hiện tại
+     * Get current logged in staff info
      */
-    public UserResponse getCurrentUser() {
+    @Transactional(readOnly = true)
+    public UserResponse getCurrentStaff() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
+
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AppException(ErrorCode.UNAUTHORIZED);
+            throw new RuntimeException("No authenticated staff found");
         }
-        
-        if (authentication.getPrincipal() instanceof String) {
-            // Principal là "anonymousUser" khi chưa đăng nhập
-            throw new AppException(ErrorCode.UNAUTHORIZED);
-        }
-        
+
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return mapToUserResponse(userDetails.getUser());
+        return mapToUserResponse(userDetails.getStaff());
     }
-    
+
     /**
-     * Chuyển đổi User entity sang UserResponse
-     * 
-     * Tách riêng method này để:
-     * - Dễ maintain
-     * - Có thể reuse
-     * - Tuân theo Single Responsibility Principle
+     * Update current user's profile
      */
-    public UserResponse mapToUserResponse(User user) {
+    @Transactional
+    public UserResponse updateProfile(UpdateProfileRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("No authenticated staff found");
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Staff staff = staffRepository.findById(userDetails.getStaff().getId())
+                .orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        // Update fields if provided
+        if (request.getHoTen() != null && !request.getHoTen().isBlank()) {
+            staff.setFullName(request.getHoTen());
+        }
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            staff.setEmail(request.getEmail());
+        }
+        if (request.getSoDienThoai() != null && !request.getSoDienThoai().isBlank()) {
+            staff.setPhone(request.getSoDienThoai());
+        }
+
+        staff.setUpdatedAt(LocalDateTime.now());
+        staffRepository.save(staff);
+
+        log.info("Profile updated for staff: {}", staff.getStaffCode());
+        return mapToUserResponse(staff);
+    }
+
+    /**
+     * Change current user's password
+     */
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("No authenticated staff found");
+        }
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Staff staff = staffRepository.findById(userDetails.getStaff().getId())
+                .orElseThrow(() -> new RuntimeException("Staff not found"));
+
+        // Verify current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), staff.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu hiện tại không đúng");
+        }
+
+        // Update password
+        staff.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        staff.setUpdatedAt(LocalDateTime.now());
+        staffRepository.save(staff);
+
+        log.info("Password changed for staff: {}", staff.getStaffCode());
+    }
+
+    /**
+     * Map Staff entity to UserResponse DTO (Vietnamese field names)
+     */
+    public UserResponse mapToUserResponse(Staff staff) {
         return UserResponse.builder()
-                .id(user.getId())
-                .maNhanVien(user.getMaNhanVien())
-                .hoTen(user.getHoTen())
-                .email(user.getEmail())
-                .soDienThoai(user.getSoDienThoai())
-                .roleName(user.getRole().getRoleName())
-                .roleDisplayName(user.getRole().getDisplayName())
-                .tenQuay(user.getQuay() != null ? user.getQuay().getTenQuay() : null)
-                .quayId(user.getQuay() != null ? user.getQuay().getId() : null)
-                .trangThai(user.getTrangThai())
-                .lanDangNhapCuoi(user.getLanDangNhapCuoi())
+                .id(staff.getId())
+                .maNhanVien(staff.getStaffCode())
+                .hoTen(staff.getFullName())
+                .email(staff.getEmail())
+                .soDienThoai(staff.getPhone())
+                .roleId(staff.getRole() != null ? staff.getRole().getId() : null)
+                .roleName(staff.getRole() != null ? staff.getRole().getRoleName() : null)
+                .roleDisplayName(staff.getRole() != null ? staff.getRole().getDisplayName() : null)
+                .quayId(staff.getCounter() != null ? staff.getCounter().getId() : null)
+                .tenQuay(staff.getCounter() != null ? staff.getCounter().getCounterName() : null)
+                .trangThai(staff.getIsActive())
+                .ngayTao(staff.getCreatedAt())
                 .build();
     }
 }

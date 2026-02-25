@@ -1,130 +1,122 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.ApiResponse;
 import com.example.demo.dto.request.LoginRequest;
+import com.example.demo.dto.response.ApiResponse;
 import com.example.demo.dto.response.LoginResponse;
 import com.example.demo.dto.response.UserResponse;
-import com.example.demo.security.CustomUserDetails;
+import com.example.demo.entity.Staff;
+import com.example.demo.repository.StaffRepository;
 import com.example.demo.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Controller xử lý Authentication (đăng nhập, đăng xuất)
- * 
- * Base path: /api/auth
- * 
- * Endpoints:
- * - POST /api/auth/login  → Đăng nhập
- * - POST /api/auth/logout → Đăng xuất (optional, vì JWT stateless)
- * - GET  /api/auth/me     → Lấy thông tin user hiện tại
- */
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Slf4j
 public class AuthController {
-    
+
     private final AuthService authService;
-    
+    private final StaffRepository staffRepository;
+    private final PasswordEncoder passwordEncoder;
+
     /**
-     * Đăng nhập
-     * 
+     * Login endpoint
      * POST /api/auth/login
-     * Body: { "maNhanVien": "NV001", "password": "123456" }
-     * 
-     * @param request LoginRequest chứa maNhanVien và password
-     * @return ApiResponse chứa LoginResponse (JWT token + user info)
      */
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(
-            @Valid 
-            @RequestBody LoginRequest request) {
-        
-        log.info("Login request cho user: {}", request.getMaNhanVien());
-        
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
+        log.info("Login request for staff: {}", request.getStaffCode());
         LoginResponse response = authService.login(request);
-        
-        return ResponseEntity.ok(
-            ApiResponse.success(response, "Đăng nhập thành công")
-        );
+        return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập thành công"));
     }
-    
+
     /**
-     * Đăng xuất
-     * 
-     * POST /api/auth/logout
-     * 
-     * Với JWT stateless, logout chỉ cần xóa token ở client.
-     * Server không cần làm gì vì không lưu session.
-     */
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        
-        if (userDetails != null) {
-            log.info("User {} đã đăng xuất", userDetails.getUsername());
-        }
-        
-        return ResponseEntity.ok(
-            ApiResponse.success("Đăng xuất thành công")
-        );
-    }
-    
-    /**
-     * Lấy thông tin user hiện tại
-     * 
+     * Get current logged in staff info
      * GET /api/auth/me
-     * Header: Authorization: Bearer <token>
-     * 
-     * @return ApiResponse chứa UserResponse
      */
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        
-        UserResponse currentUser = authService.getCurrentUser();
-        
-        return ResponseEntity.ok(
-            ApiResponse.success(currentUser, "Lấy thông tin thành công")
-        );
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentStaff() {
+        UserResponse response = authService.getCurrentStaff();
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
-    
+
     /**
-     * Kiểm tra token còn valid không
-     * 
+     * Validate token
      * GET /api/auth/validate
-     * Header: Authorization: Bearer <token>
      */
     @GetMapping("/validate")
-    public ResponseEntity<ApiResponse<TokenValidationResponse>> validateToken(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        
-        TokenValidationResponse response = TokenValidationResponse.builder()
-                .valid(userDetails != null)
-                .username(userDetails != null ? userDetails.getUsername() : null)
-                .role(userDetails != null ? userDetails.getRoleName() : null)
-                .build();
-        
-        return ResponseEntity.ok(
-            ApiResponse.success(response, "Token hợp lệ")
-        );
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> validateToken() {
+        // If request reaches here, token is valid (JWT filter already validated)
+        return ResponseEntity.ok(ApiResponse.success(Map.of("valid", true)));
     }
-    
+
     /**
-     * Inner class cho validate token response
+     * Health check endpoint
+     * GET /api/auth/health
      */
-    @lombok.Data
-    @lombok.Builder
-    @lombok.NoArgsConstructor
-    @lombok.AllArgsConstructor
-    public static class TokenValidationResponse {
-        private boolean valid;
-        private String username;
-        private String role;
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of("status", "OK", "message", "Auth service is running"));
+    }
+
+    /**
+     * Reset password (for development only!)
+     * POST /api/auth/reset-password
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
+        String staffCode = request.get("staffCode");
+        String newPassword = request.get("newPassword");
+
+        if (staffCode == null || newPassword == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "staffCode and newPassword are required"));
+        }
+
+        Staff staff = staffRepository.findByStaffCode(staffCode)
+                .orElse(null);
+
+        if (staff == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Staff not found: " + staffCode));
+        }
+
+        String hashedPassword = passwordEncoder.encode(newPassword);
+        staff.setPasswordHash(hashedPassword);
+        staffRepository.save(staff);
+
+        log.info("Password reset for staff: {}", staffCode);
+        return ResponseEntity.ok(Map.of("message", "Password reset successfully for " + staffCode));
+    }
+
+    /**
+     * Update current user's profile
+     * PUT /api/auth/profile
+     */
+    @PutMapping("/profile")
+    public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
+            @Valid @RequestBody com.example.demo.dto.request.UpdateProfileRequest request) {
+        log.info("Update profile request");
+        UserResponse response = authService.updateProfile(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "Cập nhật thông tin thành công"));
+    }
+
+    /**
+     * Change current user's password
+     * POST /api/auth/change-password
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Map<String, String>>> changePassword(
+            @Valid @RequestBody com.example.demo.dto.request.ChangePasswordRequest request) {
+        log.info("Change password request");
+        authService.changePassword(request);
+        return ResponseEntity.ok(ApiResponse.success(
+                Map.of("message", "Đổi mật khẩu thành công"),
+                "Đổi mật khẩu thành công"));
     }
 }

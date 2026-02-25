@@ -1,6 +1,6 @@
 package com.example.demo.security;
 
-import com.example.demo.entity.User;
+import com.example.demo.entity.Staff;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -10,124 +10,111 @@ import java.util.Collection;
 import java.util.Collections;
 
 /**
- * Custom implementation của UserDetails interface
+ * Custom implementation of UserDetails interface
  * 
- * UserDetails là interface của Spring Security, đại diện cho thông tin user
- * đã được xác thực. Spring Security sử dụng object này để:
- * - Kiểm tra password
- * - Kiểm tra quyền (authorities/roles)
- * - Kiểm tra trạng thái tài khoản (locked, expired, enabled...)
- * 
- * Tại sao cần custom?
- * - Để wrap Entity User của chúng ta vào định dạng Spring Security hiểu
- * - Để có thể truy cập thông tin User từ SecurityContext sau khi đăng nhập
+ * UserDetails is Spring Security interface representing authenticated user
+ * info.
+ * Spring Security uses this object to:
+ * - Check password
+ * - Check authorities/roles
+ * - Check account status (locked, expired, enabled...)
  */
 @Getter
 public class CustomUserDetails implements UserDetails {
-    
+
     /**
-     * Lưu trữ entity User gốc để có thể lấy thông tin chi tiết sau
+     * Store original Staff entity for detailed info access
      */
-    private final User user;
-    
-    public CustomUserDetails(User user) {
-        this.user = user;
+    private final Staff staff;
+
+    public CustomUserDetails(Staff staff) {
+        this.staff = staff;
     }
-    
+
     /**
-     * Trả về danh sách quyền của user
+     * Return list of user authorities
      * 
-     * GrantedAuthority: Đại diện cho 1 quyền (permission/role)
-     * SimpleGrantedAuthority: Implementation đơn giản, chỉ cần tên role
-     * 
-     * Prefix "ROLE_" là convention của Spring Security cho role-based authorization
-     * Ví dụ: ROLE_ADMIN, ROLE_NHANVIEN
+     * Prefix "ROLE_" is Spring Security convention for role-based authorization
+     * Example: ROLE_Admin, ROLE_Staff
      */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Lấy roleName từ entity Role và thêm prefix ROLE_
-        String roleName = user.getRole().getRoleName();
+        String roleName = staff.getRole().getRoleName();
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + roleName));
     }
-    
+
     /**
-     * Trả về password đã hash để Spring Security so sánh
+     * Return hashed password for Spring Security comparison
      */
     @Override
     public String getPassword() {
-        return user.getPasswordHash();
+        return staff.getPasswordHash();
     }
-    
+
     /**
-     * Trả về username (dùng mã nhân viên làm username)
+     * Return username (using staffCode as username)
      */
     @Override
     public String getUsername() {
-        return user.getMaNhanVien();
+        return staff.getStaffCode();
     }
-    
+
     /**
-     * Tài khoản có hết hạn không?
-     * true = chưa hết hạn (có thể đăng nhập)
-     * 
-     * Nếu cần tính năng này, thêm field expiryDate vào User entity
+     * Is account not expired?
+     * true = not expired (can login)
      */
     @Override
     public boolean isAccountNonExpired() {
-        return true; // Không implement tính năng hết hạn tài khoản
+        return true;
     }
-    
+
     /**
-     * Tài khoản có bị khóa không?
-     * true = không bị khóa (có thể đăng nhập)
-     * 
-     * Sử dụng field trangThai từ User entity
+     * Is account not locked?
+     * true = not locked (can login)
      */
     @Override
     public boolean isAccountNonLocked() {
-        return user.getTrangThai() != null && user.getTrangThai();
+        return staff.getIsActive() != null && staff.getIsActive();
     }
-    
+
     /**
-     * Credentials (password) có hết hạn không?
-     * true = chưa hết hạn
-     * 
-     * Nếu cần tính năng đổi mật khẩu định kỳ, implement ở đây
+     * Are credentials not expired?
+     * true = not expired
      */
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // Không implement tính năng password expiry
+        return true;
     }
-    
+
     /**
-     * Tài khoản có được kích hoạt không?
-     * true = đã kích hoạt (có thể đăng nhập)
+     * Is account enabled?
+     * true = enabled (can login)
      */
     @Override
     public boolean isEnabled() {
-        return user.getTrangThai() != null && user.getTrangThai();
+        return staff.getIsActive() != null && staff.getIsActive();
     }
-    
+
     // ================== Helper methods ==================
-    
+
     /**
-     * Lấy ID của user
+     * Get staff ID
      */
     public Integer getId() {
-        return user.getId();
+        return staff.getId();
     }
-    
+
     /**
-     * Lấy họ tên đầy đủ
+     * Get full name
      */
-    public String getHoTen() {
-        return user.getHoTen();
+    public String getFullName() {
+        return staff.getFullName();
     }
-    
+
     /**
-     * Lấy tên role
+     * Get role name
      */
     public String getRoleName() {
-        return user.getRole().getRoleName();
+        return staff.getRole().getRoleName();
     }
 }

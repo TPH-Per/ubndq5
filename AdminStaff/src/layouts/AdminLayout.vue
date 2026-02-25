@@ -120,9 +120,9 @@ import {
   LogOut, 
   Search, 
   Bell, 
-  Settings,
   UserCog,
-  Layers
+  Layers,
+  ClipboardList
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import EditProfileModal from '@/components/shared/EditProfileModal.vue'
@@ -138,8 +138,9 @@ const sidebarItems = [
   { icon: Users, label: 'Quản lý tài khoản', path: '/admin/accounts' },
   { icon: Building2, label: 'Quản lý quầy', path: '/admin/counters' },
   { icon: Layers, label: 'Quản lý chuyên môn', path: '/admin/specialties' },
+  { icon: ClipboardList, label: 'Quản lý thủ tục', path: '/admin/procedures' },
   { icon: FileBarChart, label: 'Báo cáo & Góp ý', path: '/admin/reports' },
-  { icon: Settings, label: 'Cài đặt hệ thống', path: '/admin/settings' },
+  { icon: UserCog, label: 'Tài khoản cá nhân', path: '/admin/profile' },
 ]
 
 // Lấy thông tin user từ authStore (reactive)

@@ -4,7 +4,7 @@ import { Calendar, List, FileText, Info, ChevronRight, Activity, X } from 'lucid
 import { cn } from '../../lib/utils';
 import { useSimulation } from '../../context/SimulationContext';
 import { MOCK_NEWS } from '../../data/mock';
-import heroLogo from '../../data/citizen_logo_blue_bg.png';
+import heroLogo from '../../data/citizen_logo_transparent-removebg-preview.png';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const CitizenHome = () => {

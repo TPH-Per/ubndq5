@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSimulation } from '../../context/SimulationContext';
-import { Calendar, Clock, MapPin, ChevronRight, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, ChevronRight, AlertCircle, CheckCircle2, XCircle, Smartphone } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/Button';
 
@@ -30,7 +30,7 @@ export const MyAppointments = () => {
       completed: 'bg-gray-100 text-gray-600',
       cancelled: 'bg-red-50 text-red-600'
     };
-    
+
     const labels = {
       upcoming: 'Sắp tới',
       waiting: 'Đang chờ',
@@ -39,7 +39,7 @@ export const MyAppointments = () => {
       completed: 'Hoàn thành',
       cancelled: 'Đã huỷ'
     };
-    
+
     return (
       <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide", styles[status as keyof typeof styles])}>
         {labels[status as keyof typeof labels] || status}
@@ -71,7 +71,7 @@ export const MyAppointments = () => {
       <div className="p-4 space-y-4 flex-1">
         {filteredAppointments.length > 0 ? (
           filteredAppointments.map((apt) => (
-            <div 
+            <div
               key={apt.id}
               onClick={() => ['upcoming', 'waiting', 'ready', 'serving'].includes(apt.status) && navigate(`/citizen/queue/${apt.id}`)}
               className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer"
@@ -90,7 +90,15 @@ export const MyAppointments = () => {
                     <p className="text-xs text-gray-500">{apt.date}</p>
                   </div>
                 </div>
-                <StatusBadge status={apt.status} />
+                <div className="flex flex-col items-end gap-1">
+                  <StatusBadge status={apt.status} />
+                  {apt.zaloLinked && (
+                    <span className="flex items-center gap-1 text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium border border-blue-100">
+                      <Smartphone className="h-3 w-3" />
+                      Zalo
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2 mb-4">

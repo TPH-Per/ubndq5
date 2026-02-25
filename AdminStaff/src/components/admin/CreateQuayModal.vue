@@ -59,7 +59,7 @@
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Prefix số <span class="text-red-500">*</span>
+                Ký tự bắt đầu <span class="text-red-500">*</span>
               </label>
               <input
                 v-model="form.prefixSo"
