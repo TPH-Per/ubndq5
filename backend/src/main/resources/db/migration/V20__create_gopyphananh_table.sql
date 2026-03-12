@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS "GopYPhanAnh" (
     id SERIAL PRIMARY KEY,
     magopy VARCHAR(50) NOT NULL DEFAULT '',
     cccd VARCHAR(12),
+    citizen_name VARCHAR(100),
     zaloid VARCHAR(100),
     loaigopy INT NOT NULL DEFAULT 1,
     tieude VARCHAR(200) NOT NULL,

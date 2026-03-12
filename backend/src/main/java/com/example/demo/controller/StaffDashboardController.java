@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 /**
  * Staff Dashboard Controller
@@ -28,7 +27,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @PreAuthorize("hasRole('Staff') or hasRole('Admin')")
-@Transactional
 public class StaffDashboardController {
 
         private final ApplicationRepository applicationRepository;
@@ -50,43 +48,29 @@ public class StaffDashboardController {
         }
 
         /**
-         * Lấy thông tin tổng quan dashboard
+         * Lấy thông tin tổng quan dashboard.
+         * Dùng COUNT queries — không load toàn bộ DB vào RAM.
          * GET /api/staff/dashboard
          */
         @GetMapping
+        @Transactional(readOnly = true)
         public ResponseEntity<ApiResponse<StaffDashboardData>> getDashboard(Authentication authentication) {
                 Staff staff = getCurrentStaff(authentication);
                 LocalDate today = LocalDate.now();
 
-                // Thống kê lịch hẹn hôm nay - dùng applicationHistoryRepository
-                List<Application> todayApps = applicationHistoryRepository.findApplicationsByAppointmentDate(today);
+                // Today's appointment counts via COUNT queries (no entity loading)
+                int tongSoChoHomNay = (int) applicationHistoryRepository
+                                .countByAppointmentDateAndPhase(today, Application.PHASE_QUEUE);
+                int daXuLyHomNay = (int) applicationHistoryRepository
+                                .countByAppointmentDateAndPhase(today, Application.PHASE_COMPLETED);
+                int dangXuLy = (int) applicationHistoryRepository
+                                .countByAppointmentDateAndPhase(today, Application.PHASE_PROCESSING);
 
-                int tongSoChoHomNay = (int) todayApps.stream()
-                                .filter(a -> a.getCurrentPhase() == Application.PHASE_QUEUE)
-                                .count();
-
-                int daXuLyHomNay = (int) todayApps.stream()
-                                .filter(a -> a.getCurrentPhase() == Application.PHASE_COMPLETED)
-                                .count();
-
-                int dangXuLy = (int) todayApps.stream()
-                                .filter(a -> a.getCurrentPhase() == Application.PHASE_PROCESSING)
-                                .count();
-
-                // Thống kê hồ sơ
-                List<Application> allApps = applicationRepository.findAll();
-
-                int tongHoSoDangXuLy = (int) allApps.stream()
-                                .filter(a -> a.getCurrentPhase() == Application.PHASE_PENDING ||
-                                                a.getCurrentPhase() == Application.PHASE_PROCESSING)
-                                .count();
-
-                int hoSoTreHan = (int) allApps.stream()
-                                .filter(a -> a.getDeadline() != null &&
-                                                a.getDeadline().isBefore(today) &&
-                                                a.getCurrentPhase() != Application.PHASE_COMPLETED &&
-                                                a.getCurrentPhase() != Application.PHASE_CANCELLED)
-                                .count();
+                // Global stats via COUNT queries (countByPhase + countOverdue)
+                long pendingCount    = applicationRepository.countByPhase(Application.PHASE_PENDING);
+                long processingCount = applicationRepository.countByPhase(Application.PHASE_PROCESSING);
+                int tongHoSoDangXuLy = (int) (pendingCount + processingCount);
+                int hoSoTreHan       = (int) applicationRepository.countOverdue(today);
 
                 StaffDashboardData dashboard = StaffDashboardData.builder()
                                 .tenNhanVien(staff.getFullName())

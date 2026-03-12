@@ -13,6 +13,9 @@ import com.example.demo.repository.StaffRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,7 +35,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 @PreAuthorize("hasRole('Admin')")
-@Transactional
 public class UserController {
 
     private final StaffRepository staffRepository;
@@ -41,16 +43,22 @@ public class UserController {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Lấy danh sách tất cả users
-     * GET /api/admin/users
+     * Lấy danh sách users (phân trang)
+     * GET /api/admin/users?page=0&size=50
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
-        log.info("Getting all users");
+    @Transactional(readOnly = true)
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        log.info("Getting users page={} size={}", page, size);
 
-        List<UserResponse> users = staffRepository.findAll().stream()
-                .map(this::mapToUserResponse)
-                .collect(Collectors.toList());
+        if (size > 200) size = 200;
+        if (page < 0)   page = 0;
+
+        Page<UserResponse> users = staffRepository.findAll(
+                PageRequest.of(page, size, Sort.by("staffCode").ascending()))
+                .map(this::mapToUserResponse);
 
         return ResponseEntity.ok(ApiResponse.success(users));
     }
@@ -60,6 +68,7 @@ public class UserController {
      * GET /api/admin/users/{id}
      */
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable Integer id) {
         Staff staff = staffRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên với ID: " + id));
@@ -72,6 +81,7 @@ public class UserController {
      * POST /api/admin/users
      */
     @PostMapping
+    @Transactional
     public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
         log.info("Creating user: {}", request.getMaNhanVien());
 
@@ -121,6 +131,7 @@ public class UserController {
      * PUT /api/admin/users/{id}
      */
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(
             @PathVariable Integer id,
             @RequestBody UpdateUserRequest request) {
@@ -172,6 +183,7 @@ public class UserController {
      * DELETE /api/admin/users/{id}
      */
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Integer id) {
         Staff staff = staffRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên với ID: " + id));
@@ -189,6 +201,7 @@ public class UserController {
      * POST /api/admin/users/{id}/reset-password
      */
     @PostMapping("/{id}/reset-password")
+    @Transactional
     public ResponseEntity<ApiResponse<UserResponse>> resetPassword(
             @PathVariable Integer id,
             @RequestBody Map<String, String> request) {

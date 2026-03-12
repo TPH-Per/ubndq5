@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSimulation } from '../../context/SimulationContext';
-import { Calendar, Clock, MapPin, ChevronRight, AlertCircle, CheckCircle2, XCircle, Smartphone } from 'lucide-react';
+import { Calendar, Clock, MapPin, ChevronRight, AlertCircle, CheckCircle2, XCircle, Smartphone, MessageSquare } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/Button';
 
 export const MyAppointments = () => {
   const navigate = useNavigate();
-  const { myAppointments } = useSimulation();
+  const { myAppointments, refreshAppointments } = useSimulation();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed' | 'cancelled'>('upcoming');
 
+  React.useEffect(() => {
+    refreshAppointments();
+  }, []);
+
   const filteredAppointments = myAppointments.filter(apt => {
-    if (activeTab === 'upcoming') return ['upcoming', 'waiting', 'ready', 'serving'].includes(apt.status);
+    if (activeTab === 'upcoming') return ['upcoming', 'scheduled', 'waiting', 'ready', 'serving', 'supplement'].includes(apt.status);
     return apt.status === activeTab;
   });
 
@@ -23,21 +27,27 @@ export const MyAppointments = () => {
 
   const StatusBadge = ({ status }: { status: string }) => {
     const styles = {
-      upcoming: 'bg-blue-100 text-blue-700',
-      waiting: 'bg-yellow-100 text-yellow-700',
-      ready: 'bg-green-100 text-green-700',
-      serving: 'bg-green-500 text-white animate-pulse',
+      scheduled: 'bg-blue-100 text-blue-700',
+      upcoming:  'bg-blue-100 text-blue-700',
+      waiting:   'bg-yellow-100 text-yellow-700',
+      ready:     'bg-green-100 text-green-700',
+      serving:   'bg-green-500 text-white animate-pulse',
+      supplement:'bg-orange-100 text-orange-700',
       completed: 'bg-gray-100 text-gray-600',
-      cancelled: 'bg-red-50 text-red-600'
+      cancelled: 'bg-red-50 text-red-600',
+      processing:'bg-green-500 text-white animate-pulse',
     };
 
     const labels = {
-      upcoming: 'Sắp tới',
-      waiting: 'Đang chờ',
-      ready: 'Sẵn sàng',
-      serving: 'Đang phục vụ',
+      scheduled: 'Đã đặt lịch',
+      upcoming:  'Sắp tới',
+      waiting:   'Đang chờ',
+      ready:     'Sẵn sàng',
+      serving:   'Đang phục vụ',
+      supplement:'Bổ sung hồ sơ',
       completed: 'Hoàn thành',
-      cancelled: 'Đã huỷ'
+      cancelled: 'Đã huỷ',
+      processing:'Đang phục vụ',
     };
 
     return (
@@ -73,7 +83,7 @@ export const MyAppointments = () => {
           filteredAppointments.map((apt) => (
             <div
               key={apt.id}
-              onClick={() => ['upcoming', 'waiting', 'ready', 'serving'].includes(apt.status) && navigate(`/citizen/queue/${apt.id}`)}
+              onClick={() => ['upcoming', 'scheduled', 'waiting', 'ready', 'serving', 'supplement'].includes(apt.status) && navigate(`/citizen/queue/${apt.id}`)}
               className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer"
             >
               <div className="flex justify-between items-start mb-3">
@@ -112,9 +122,25 @@ export const MyAppointments = () => {
                 </div>
               </div>
 
-              {['upcoming', 'waiting', 'ready', 'serving'].includes(apt.status) && (
+              {['upcoming', 'scheduled', 'waiting', 'ready', 'serving', 'supplement'].includes(apt.status) && (
                 <Button fullWidth size="sm" variant="secondary" className="text-xs h-8">
                   Theo dõi trực tiếp <ChevronRight className="h-3 w-3 ml-1" />
+                </Button>
+              )}
+              {apt.status === 'completed' && (
+                <Button
+                  fullWidth
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-8 mt-1 border-blue-200 text-blue-600 hover:bg-blue-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/citizen/feedback', {
+                      state: { applicationId: parseInt(apt.id), procedureName: apt.procedure, fromAppointment: true }
+                    });
+                  }}
+                >
+                  <MessageSquare className="h-3 w-3 mr-1" /> Gửi đánh giá
                 </Button>
               )}
             </div>

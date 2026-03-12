@@ -56,10 +56,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // URLs PUBLIC - không cần đăng nhập
                         .requestMatchers(
-                                "/api/auth/**", // Login, register
-                                "/api/public/**", // Public endpoints
+                                "/api/auth/**",    // Login, register
+                                "/api/public/**",  // Public endpoints
                                 "/api/citizen/**", // Citizen/Client APIs (Zalo Mini App)
-                                "/error", // Error page
+                                "/error",          // Error page
                                 "/actuator/health" // Health check
                         ).permitAll()
 

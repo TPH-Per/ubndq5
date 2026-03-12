@@ -9,8 +9,8 @@ import java.util.TimeZone;
 class DemoApplicationTests {
 
 	static {
-		// Set default timezone to UTC to avoid PostgreSQL timezone issues with Asia/Saigon
-		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+		// Set default timezone to Asia/Ho_Chi_Minh to correctly handle Vietnam time
+		TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
 	}
 
 	@Test

@@ -3,6 +3,7 @@ package com.example.demo.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -42,8 +43,19 @@ public class JwtUtils {
     private long jwtExpiration;
 
     /**
+     * Validate JWT secret on startup.
+     * Throws an error to fail fast if the secret is missing or insufficiently long.
+     */
+    @PostConstruct
+    public void validateJwtSecret() {
+        if (jwtSecret == null || jwtSecret.isBlank() || jwtSecret.length() < 32) {
+            throw new IllegalStateException("JWT_SECRET env var must be set and at least 32 characters");
+        }
+    }
+
+    /**
      * Tạo SecretKey từ chuỗi secret
-     * 
+     *
      * Keys.hmacShaKeyFor(): Tạo key cho thuật toán HMAC-SHA
      */
     private SecretKey getSigningKey() {

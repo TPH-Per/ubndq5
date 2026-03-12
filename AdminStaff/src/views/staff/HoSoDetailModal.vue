@@ -234,12 +234,14 @@ const close = () => {
 // Helpers
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '--'
-  return new Date(dateStr).toLocaleDateString('vi-VN')
+  const d = new Date(dateStr)
+  return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth() + 1).toString().padStart(2,'0')}/${d.getFullYear()}`
 }
 
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '--'
-  return new Date(dateStr).toLocaleString('vi-VN')
+  const d = new Date(dateStr)
+  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')} ${d.getDate().toString().padStart(2,'0')}/${(d.getMonth() + 1).toString().padStart(2,'0')}/${d.getFullYear()}`
 }
 
 const isOverdue = (hanXuLy: string | null) => {

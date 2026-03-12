@@ -19,7 +19,7 @@ public interface ProcedureRepository extends JpaRepository<Procedure, Integer> {
     @Query("SELECT p FROM Procedure p WHERE p.isActive = true ORDER BY p.displayOrder")
     List<Procedure> findAllActive();
 
-    @Query("SELECT p FROM Procedure p WHERE p.procedureType.id = :procedureTypeId")
+    @Query("SELECT p FROM Procedure p LEFT JOIN FETCH p.procedureType WHERE p.procedureType.id = :procedureTypeId")
     List<Procedure> findByProcedureTypeId(Integer procedureTypeId);
 
     @Query("SELECT p FROM Procedure p WHERE p.procedureType.id = :procedureTypeId AND p.isActive = :isActive ORDER BY p.displayOrder")

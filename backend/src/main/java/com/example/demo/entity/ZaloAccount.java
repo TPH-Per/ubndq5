@@ -2,6 +2,7 @@ package com.example.demo.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.List;
 
 @Entity
 @Table(name = "zaloaccount")
@@ -25,4 +26,8 @@ public class ZaloAccount {
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
+
+    // 1 ZaloAccount có nhiều Appointment (quan hệ chính thay thế Citizen entity)
+    @OneToMany(mappedBy = "zaloAccount", fetch = FetchType.LAZY)
+    private List<Appointment> appointments;
 }

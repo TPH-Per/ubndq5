@@ -1,28 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSimulation } from '../../context/SimulationContext';
-import { Clock, MapPin, ChevronLeft, Bell, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, ChevronLeft, Bell, Navigation, Loader2, FileText, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { cn } from '../../lib/utils';
 import { motion } from 'framer-motion';
 import * as api from '../../services/citizenApi';
+import Swal from 'sweetalert2';
 
 export const QueueTracking = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { citizenId } = useSimulation();
+  const { zaloId, refreshAppointments } = useSimulation();
 
   const [appointment, setAppointment] = useState<api.AppointmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     const fetchAppointment = async () => {
-      if (!id || !citizenId) return;
+      if (!id || !zaloId) return;
 
       try {
         setLoading(true);
-        const data = await api.getAppointmentDetail(parseInt(id), citizenId);
+        const data = await api.getAppointmentDetail(parseInt(id), zaloId);
         setAppointment(data);
       } catch (err: any) {
         setError(err.message || 'Không thể tải thông tin lịch hẹn');
@@ -35,7 +36,7 @@ export const QueueTracking = () => {
     // Refresh every 30 seconds
     const interval = setInterval(fetchAppointment, 30000);
     return () => clearInterval(interval);
-  }, [id, citizenId]);
+  }, [id, zaloId]);
 
   if (loading) {
     return (
@@ -56,7 +57,48 @@ export const QueueTracking = () => {
 
   const isServing = appointment.status === 'PROCESSING';
   const isCompleted = appointment.status === 'COMPLETED';
+  const isCancelled = appointment.status === 'CANCELLED';
   const peopleAhead = appointment.peopleAhead;
+
+  // Chỉ được hủy khi trạng thái là PENDING hoặc IN_QUEUE (chưa được gọi)
+  const canCancel = appointment.status === 'PENDING' || appointment.status === 'IN_QUEUE';
+
+  const handleCancel = async () => {
+    const result = await Swal.fire({
+      title: 'Xác nhận hủy lịch hẹn',
+      text: `Bạn có chắc muốn hủy lịch hẹn ${appointment.queueDisplay}? Hành động này không thể hoàn tác.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Hủy lịch hẹn',
+      cancelButtonText: 'Giữ lại',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      setCancelling(true);
+      await api.cancelAppointment(parseInt(id!), zaloId);
+      await refreshAppointments();
+      Swal.fire({
+        icon: 'success',
+        title: 'Đã hủy lịch hẹn',
+        text: 'Lịch hẹn của bạn đã được hủy thành công.',
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      navigate('/citizen/appointments');
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Không thể hủy',
+        text: err.message || 'Có lỗi xảy ra, vui lòng thử lại.',
+      });
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <div className="min-h-full bg-gray-50 flex flex-col">
@@ -137,14 +179,58 @@ export const QueueTracking = () => {
         </div>
 
         {/* Appointment Info */}
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h4 className="font-bold text-gray-900 mb-2">{appointment.procedureName}</h4>
-          <p className="text-sm text-gray-500">Mã: {appointment.code}</p>
-          {appointment.appointmentDate && (
-            <p className="text-sm text-gray-500">
-              Ngày hẹn: {appointment.appointmentDate} {appointment.appointmentTime && `- ${appointment.appointmentTime}`}
-            </p>
+        <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
+          <div className="flex items-start gap-3">
+            <FileText className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-bold text-gray-900">{appointment.procedureName}</p>
+              <p className="text-xs text-gray-400">Mã: {appointment.code}</p>
+              {appointment.appointmentDate && (
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Ngày hẹn: {appointment.appointmentDate}{appointment.appointmentTime && ` - ${appointment.appointmentTime}`}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Mô tả thủ tục */}
+          {appointment.description && (
+            <div className="flex items-start gap-3 pt-3 border-t border-gray-100">
+              <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs text-blue-600 font-bold uppercase tracking-wide mb-0.5">Mô tả thủ tục</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{appointment.description}</p>
+              </div>
+            </div>
           )}
+
+          {/* Giấy tờ cần mang theo */}
+          {(() => {
+            const raw = appointment.requiredDocuments;
+            const docs: string[] = Array.isArray(raw)
+              ? raw
+              : typeof raw === 'string' && (raw as string).trim()
+                ? (raw as string).split('\n').map((s: string) => s.trim()).filter(Boolean)
+                : [];
+            return docs.length > 0 ? (
+              <div className="pt-3 border-t border-yellow-100">
+                <div className="bg-yellow-50 rounded-xl p-4">
+                  <p className="text-xs text-yellow-700 font-bold uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full bg-yellow-500" />
+                    Giấy tờ cần mang theo
+                  </p>
+                  <ul className="space-y-1.5">
+                    {docs.map((doc: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2 text-xs text-yellow-800">
+                        <span className="mt-0.5 h-3.5 w-3.5 rounded border border-yellow-500 flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-yellow-600">{idx + 1}</span>
+                        <span>{doc}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : null;
+          })()}
         </div>
 
         {/* Location Info */}
@@ -162,16 +248,26 @@ export const QueueTracking = () => {
         </div>
 
         {/* Actions */}
-        {!isCompleted && (
+        {canCancel && (
           <div className="space-y-3">
-            {peopleAhead <= 1 && !isServing && (
-              <Button fullWidth className="bg-green-600 hover:bg-green-700 animate-pulse">
-                Tôi đã đến (Check-in)
-              </Button>
-            )}
-            <Button fullWidth variant="outline" className="text-red-500 border-red-100 hover:bg-red-50">
-              Huỷ lịch hẹn
+            <Button
+              fullWidth
+              variant="outline"
+              className="text-red-500 border-red-200 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleCancel}
+              disabled={cancelling}
+            >
+              {cancelling ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Đang hủy...
+                </span>
+              ) : 'Hủy lịch hẹn'}
             </Button>
+          </div>
+        )}
+        {isCancelled && (
+          <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-center">
+            <p className="text-red-600 font-medium">Lịch hẹn đã bị hủy</p>
           </div>
         )}
       </div>

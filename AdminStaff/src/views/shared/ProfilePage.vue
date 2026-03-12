@@ -438,13 +438,8 @@ const changePassword = async () => {
 
 const formatDate = (dateStr: string | undefined | null) => {
   if (!dateStr) return 'N/A'
-  return new Date(dateStr).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  const d = new Date(dateStr)
+  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')} ${d.getDate().toString().padStart(2,'0')}/${(d.getMonth() + 1).toString().padStart(2,'0')}/${d.getFullYear()}`
 }
 </script>
 

@@ -80,7 +80,7 @@ $$ LANGUAGE plpgsql;
 -- 5. FUNCTION: Backup tất cả bảng quan trọng
 CREATE OR REPLACE FUNCTION fn_backup_important_tables() RETURNS TABLE (table_name VARCHAR, rows_backed_up INTEGER) AS $$
 DECLARE v_backup_id INTEGER;
-important_tables TEXT [] := ARRAY ['staff', 'citizens', 'applications', 'procedures', 'appointments', 'counters', 'roles'];
+important_tables TEXT [] := ARRAY ['staff', 'application', 'procedure', 'appointment', 'counter', 'role'];
 t TEXT;
 v_rows INTEGER;
 BEGIN -- Tạo backup record

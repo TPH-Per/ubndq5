@@ -4,14 +4,11 @@ import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.response.ApiResponse;
 import com.example.demo.dto.response.LoginResponse;
 import com.example.demo.dto.response.UserResponse;
-import com.example.demo.entity.Staff;
-import com.example.demo.repository.StaffRepository;
 import com.example.demo.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -23,8 +20,6 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
-    private final StaffRepository staffRepository;
-    private final PasswordEncoder passwordEncoder;
 
     /**
      * Login endpoint
@@ -67,34 +62,6 @@ public class AuthController {
     }
 
     /**
-     * Reset password (for development only!)
-     * POST /api/auth/reset-password
-     */
-    @PostMapping("/reset-password")
-    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
-        String staffCode = request.get("staffCode");
-        String newPassword = request.get("newPassword");
-
-        if (staffCode == null || newPassword == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "staffCode and newPassword are required"));
-        }
-
-        Staff staff = staffRepository.findByStaffCode(staffCode)
-                .orElse(null);
-
-        if (staff == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Staff not found: " + staffCode));
-        }
-
-        String hashedPassword = passwordEncoder.encode(newPassword);
-        staff.setPasswordHash(hashedPassword);
-        staffRepository.save(staff);
-
-        log.info("Password reset for staff: {}", staffCode);
-        return ResponseEntity.ok(Map.of("message", "Password reset successfully for " + staffCode));
-    }
-
-    /**
      * Update current user's profile
      * PUT /api/auth/profile
      */
@@ -118,5 +85,18 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(
                 Map.of("message", "Đổi mật khẩu thành công"),
                 "Đổi mật khẩu thành công"));
+    }
+
+    /**
+     * Logout endpoint
+     * POST /api/auth/logout
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout() {
+        // Since we are using stateless JWT, we don't need to do much on the backend.
+        // Frontend will remove the token.
+        // Optionally, we could blacklist the token here if we had a token blacklist.
+        log.info("Logout request received");
+        return ResponseEntity.ok(ApiResponse.success("Đăng xuất thành công", "Đăng xuất thành công"));
     }
 }

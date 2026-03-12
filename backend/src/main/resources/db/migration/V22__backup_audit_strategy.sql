@@ -186,7 +186,7 @@ END;
 $$ LANGUAGE plpgsql;
 -- 9. Tạo audit triggers cho các bảng quan trọng
 DO $$
-DECLARE important_tables TEXT [] := ARRAY ['staff', 'citizen', 'application', 'procedure', 'appointment'];
+DECLARE important_tables TEXT [] := ARRAY ['staff', 'application', 'procedure', 'appointment'];
 t TEXT;
 BEGIN FOREACH t IN ARRAY important_tables LOOP -- Drop trigger nếu đã tồn tại
 EXECUTE format(

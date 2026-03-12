@@ -20,4 +20,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
     // Tìm lịch active của hồ sơ
     @Query("SELECT a FROM Appointment a WHERE a.application.id = :appId AND a.status = 0")
     List<Appointment> findActiveByApplicationId(@Param("appId") Integer appId);
+
+    // Issue #8: count bookings per slot for capacity calculation (max 5 per slot)
+    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.appointmentDate = :date AND a.appointmentTime = :time AND a.status = 0")
+    long countBookedByDateAndTime(@Param("date") LocalDate date, @Param("time") java.time.LocalTime time);
+
+    // Tìm tất cả lịch hẹn của 1 tài khoản Zalo (Zalo info nằm trong Application)
+    @Query("SELECT a FROM Appointment a WHERE a.application.zaloAccount.zaloId = :zaloId ORDER BY a.appointmentDate DESC, a.appointmentTime DESC")
+    List<Appointment> findByZaloIdOrderByDateDesc(@Param("zaloId") String zaloId);
 }

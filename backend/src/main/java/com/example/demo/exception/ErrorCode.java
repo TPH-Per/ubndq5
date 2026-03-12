@@ -18,7 +18,7 @@ import org.springframework.http.HttpStatus;
  */
 @Getter
 public enum ErrorCode {
-    
+
     // ==================== AUTHENTICATION ERRORS (1xxx) ====================
     UNAUTHORIZED("AUTH_001", "Chưa đăng nhập hoặc phiên đăng nhập đã hết hạn", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS("AUTH_002", "Mã nhân viên hoặc mật khẩu không đúng", HttpStatus.UNAUTHORIZED),
@@ -26,27 +26,35 @@ public enum ErrorCode {
     TOKEN_EXPIRED("AUTH_004", "Token đã hết hạn", HttpStatus.UNAUTHORIZED),
     TOKEN_INVALID("AUTH_005", "Token không hợp lệ", HttpStatus.UNAUTHORIZED),
     ACCESS_DENIED("AUTH_006", "Không có quyền truy cập", HttpStatus.FORBIDDEN),
-    
+
     // ==================== USER ERRORS (2xxx) ====================
     USER_NOT_FOUND("USER_001", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND),
     USER_ALREADY_EXISTS("USER_002", "Người dùng đã tồn tại", HttpStatus.CONFLICT),
     EMAIL_ALREADY_EXISTS("USER_003", "Email đã được sử dụng", HttpStatus.CONFLICT),
-    
+
     // ==================== VALIDATION ERRORS (3xxx) ====================
     VALIDATION_ERROR("VALID_001", "Dữ liệu không hợp lệ", HttpStatus.BAD_REQUEST),
     MISSING_REQUIRED_FIELD("VALID_002", "Thiếu trường bắt buộc", HttpStatus.BAD_REQUEST),
     INVALID_FORMAT("VALID_003", "Định dạng không hợp lệ", HttpStatus.BAD_REQUEST),
-    
+
     // ==================== QUEUE/COUNTER ERRORS (4xxx) ====================
     QUEUE_NOT_FOUND("QUEUE_001", "Không tìm thấy hàng đợi", HttpStatus.NOT_FOUND),
     COUNTER_NOT_FOUND("COUNTER_001", "Không tìm thấy quầy", HttpStatus.NOT_FOUND),
     COUNTER_ALREADY_ASSIGNED("COUNTER_002", "Quầy đã được phân công cho nhân viên khác", HttpStatus.CONFLICT),
-    
+
     // ==================== APPOINTMENT ERRORS (5xxx) ====================
     APPOINTMENT_NOT_FOUND("APPT_001", "Không tìm thấy lịch hẹn", HttpStatus.NOT_FOUND),
     APPOINTMENT_ALREADY_CANCELLED("APPT_002", "Lịch hẹn đã bị hủy", HttpStatus.BAD_REQUEST),
     APPOINTMENT_ALREADY_COMPLETED("APPT_003", "Lịch hẹn đã hoàn thành", HttpStatus.BAD_REQUEST),
-    
+    SLOT_FULL("APPT_004", "Slot này đã đầy, vui lòng chọn slot khác", HttpStatus.BAD_REQUEST),
+    APPOINTMENT_TOO_LATE_TO_CANCEL("APPT_005", "Chỉ được hủy lịch hẹn trước giờ hẹn ít nhất 2 tiếng",
+            HttpStatus.BAD_REQUEST),
+    APPLICATION_NOT_FOUND("APPT_006", "Không tìm thấy hồ sơ hoặc lịch hẹn", HttpStatus.NOT_FOUND),
+    CANNOT_CANCEL_IN_CURRENT_STATUS("APPT_007", "Không thể hủy lịch hẹn ở trạng thái này", HttpStatus.BAD_REQUEST),
+    MISSING_ZALO_AUTH("AUTH_007", "Cần đăng nhập Zalo để thực hiện thao tác này", HttpStatus.UNAUTHORIZED),
+    APPOINTMENT_TOO_SOON_TO_BOOK("APPT_008", "Chỉ có thể đặt lịch hẹn trước giờ hẹn ít nhất 2 tiếng",
+            HttpStatus.BAD_REQUEST),
+
     // ==================== PROCEDURE ERRORS (6xxx) ====================
     LOAITHUTUC_NOT_FOUND("PROC_001", "Không tìm thấy loại thủ tục", HttpStatus.NOT_FOUND),
     LOAITHUTUC_ALREADY_EXISTS("PROC_002", "Mã thủ tục đã tồn tại", HttpStatus.CONFLICT),
@@ -55,12 +63,13 @@ public enum ErrorCode {
     // ==================== SYSTEM ERRORS (9xxx) ====================
     INTERNAL_ERROR("SYS_001", "Lỗi hệ thống, vui lòng thử lại sau", HttpStatus.INTERNAL_SERVER_ERROR),
     DATABASE_ERROR("SYS_002", "Lỗi kết nối cơ sở dữ liệu", HttpStatus.INTERNAL_SERVER_ERROR),
-    SERVICE_UNAVAILABLE("SYS_003", "Dịch vụ tạm thời không khả dụng", HttpStatus.SERVICE_UNAVAILABLE);
-    
+    SERVICE_UNAVAILABLE("SYS_003", "Dịch vụ tạm thời không khả dụng", HttpStatus.SERVICE_UNAVAILABLE),
+    RATE_LIMIT_EXCEEDED("SYS_005", "Quá nhiều yêu cầu. Vui lòng thử lại sau 1 phút.", HttpStatus.TOO_MANY_REQUESTS);
+
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;
-    
+
     ErrorCode(String code, String message, HttpStatus httpStatus) {
         this.code = code;
         this.message = message;

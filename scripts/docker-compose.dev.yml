@@ -1,0 +1,82 @@
+# ==============================================================================
+# docker-compose.dev.yml - Môi trường phát triển (local)
+# Chạy từ thư mục gốc (HANHCHINHCONGQ5CHOLON/):
+#   docker compose -f scripts/docker-compose.dev.yml up --build
+# ==============================================================================
+
+services:
+  # ─── DATABASE ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: cholon_db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: cholon_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - cholon_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cholon_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - cholon_net
+
+  # ─── BACKEND ─────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: cholon_backend
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cholon_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: "DevSecretKeyForLocalTesting2026VeryLong!@#$%"
+      JWT_EXPIRATION: "604800000"
+      ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:3000,http://localhost:*"
+      # JVM nhẹ hơn cho môi trường dev
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+    networks:
+      - cholon_net
+
+  # ─── PGADMIN (optional) ──────────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: cholon_pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@local.dev
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    depends_on:
+      - postgres
+    profiles:
+      - tools   # Chỉ chạy khi thêm --profile tools
+    networks:
+      - cholon_net
+
+networks:
+  cholon_net:
+    driver: bridge
+
+volumes:
+  cholon_pgdata:
+    driver: local

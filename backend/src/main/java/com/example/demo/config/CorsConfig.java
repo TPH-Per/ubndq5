@@ -6,6 +6,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Arrays;
@@ -22,6 +23,15 @@ import java.util.List;
  */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
+
+        /**
+         * Rate limiter: 30 req/min per IP for citizen endpoints
+         */
+        @Override
+        public void addInterceptors(InterceptorRegistry registry) {
+                registry.addInterceptor(new RateLimitInterceptor())
+                                .addPathPatterns("/api/citizen/**");
+        }
 
         /**
          * Cấu hình CORS cho Spring MVC

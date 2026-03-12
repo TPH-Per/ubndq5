@@ -50,6 +50,7 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/cholon_db
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-secret}
+      - JWT_SECRET=${JWT_SECRET}
       - JAVA_OPTS=-Xms1g -Xmx3g -XX:+UseG1GC -XX:MaxGCPauseMillis=200
     depends_on:
       postgres:

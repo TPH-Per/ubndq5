@@ -10,7 +10,7 @@ export interface Appointment {
   citizenName: string;
   procedure: string;
   time: string;
-  status: 'waiting' | 'ready' | 'serving' | 'completed' | 'cancelled' | 'upcoming' | 'processing';
+  status: 'scheduled' | 'waiting' | 'ready' | 'serving' | 'completed' | 'cancelled' | 'upcoming' | 'processing' | 'supplement';
   date: string;
   counter?: string;
   cancelReason?: string;
@@ -39,6 +39,7 @@ interface SimulationContextType {
   myAppointments: Appointment[];
   citizenId: string;
   citizenName: string;
+  zaloId: string;
   setCitizenId: (id: string) => void;
   setCitizenName: (name: string) => void;
   stats: {
@@ -81,7 +82,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
   const [zaloId] = useState<string>(DEFAULT_ZALO_ID);
   const [zaloName] = useState<string>(DEFAULT_ZALO_NAME);
 
-  // Map API status to local status
+  // useEffect dep: zaloId (không dùng citizenId làm key nữa)
   const mapStatus = (apiStatus: string): Appointment['status'] => {
     const statusMap: Record<string, Appointment['status']> = {
       // Vietnamese labels
@@ -92,24 +93,24 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
       'ĐÃ HỦY': 'cancelled',
       'SẮP TỚI HẠN': 'upcoming',
       // English labels from backend
-      'PENDING': 'waiting',
+      'PENDING': 'scheduled',
       'IN_QUEUE': 'waiting',
       'PROCESSING': 'serving',
       'COMPLETED': 'completed',
       'CANCELLED': 'cancelled',
       'RECEIVED': 'completed',
-      'SUPPLEMENT': 'waiting',
+      'SUPPLEMENT': 'supplement',
     };
     return statusMap[apiStatus] || 'waiting';
   };
 
-  // Fetch appointments on mount and when citizenId changes
+  // Fetch appointments on mount and when zaloId changes
   const refreshAppointments = useCallback(async () => {
-    if (!citizenId) return;
+    if (!zaloId) return;
 
     setIsLoading(true);
     try {
-      const appointments = await api.getMyAppointments(citizenId);
+      const appointments = await api.getMyAppointments(zaloId);
 
       const mapped: Appointment[] = appointments.map(app => ({
         id: app.id.toString(),
@@ -150,10 +151,9 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
         appointmentDate: format(data.date, 'yyyy-MM-dd'),
         appointmentTime: data.time,
         citizenName: citizenName,
-        citizenId: citizenId,
-        phoneNumber: data.phone || '0901234567',
-        notes: data.notes,
-        // Include Zalo account info for backend linking
+        citizenCccd: citizenId,
+        citizenPhone: data.phone || '0901234567',
+        citizenEmail: data.email,
         zaloId: zaloId,
         zaloName: zaloName,
       };
@@ -167,7 +167,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
         citizenName: citizenName,
         procedure: result.procedureName,
         time: result.appointmentTime,
-        status: 'waiting',
+        status: 'scheduled',
         date: result.appointmentDate,
         code: result.code,
       };
@@ -187,7 +187,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
   const cancelAppointment = async (id: string, reason: string = 'Cancelled by user') => {
     try {
       setIsLoading(true);
-      await api.cancelAppointment(parseInt(id), citizenId);
+      await api.cancelAppointment(parseInt(id), zaloId);
 
       setWaitingList(prev => prev.filter(a => a.id !== id));
       setMyAppointments(prev => prev.map(a =>
@@ -308,6 +308,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
       myAppointments,
       citizenId,
       citizenName,
+      zaloId,
       setCitizenId,
       setCitizenName,
       stats,

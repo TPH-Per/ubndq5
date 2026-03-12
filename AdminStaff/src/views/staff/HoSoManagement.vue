@@ -378,6 +378,16 @@
             </select>
           </div>
 
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">Mô tả / Ghi chú (không bắt buộc)</label>
+            <textarea
+              v-model="createForm.ghiChu"
+              rows="2"
+              placeholder="Nhập ghi chú hoặc mô tả thêm cho hồ sơ này..."
+              class="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none resize-none"
+            ></textarea>
+          </div>
+
           <div class="flex gap-3 justify-end pt-4 border-t border-gray-100 bg-gray-50 -mx-6 -mb-6 p-6 mt-6">
             <button
               type="button"
@@ -590,7 +600,8 @@ const createForm = ref({
   soDienThoai: '',
   email: '',
   loaiThuTucId: '',
-  doUuTien: 0
+  doUuTien: 0,
+  ghiChu: ''
 })
 
 const statusForm = ref({
@@ -657,7 +668,9 @@ const refreshData = async () => {
       dashboard.value = dashboardRes.data.data
     }
     if (listRes.data.success) {
-      hoSoList.value = listRes.data.data
+      const data = listRes.data.data
+      // Backend trả về Page object { content: [...], totalElements, ... }
+      hoSoList.value = Array.isArray(data) ? data : (data as any).content ?? []
     }
   } catch (err: any) {
     console.error(err);
@@ -699,6 +712,7 @@ const createHoSo = async (confirmDuplicate = false) => {
       email: createForm.value.email,
       loaiThuTucId: parseInt(createForm.value.loaiThuTucId as string),
       doUuTien: createForm.value.doUuTien,
+      ghiChu: createForm.value.ghiChu || undefined,
       confirmDuplicate: confirmDuplicate
     })
 
@@ -734,7 +748,8 @@ const resetCreateForm = () => {
     soDienThoai: '',
     email: '',
     loaiThuTucId: '',
-    doUuTien: 0
+    doUuTien: 0,
+    ghiChu: ''
   }
 }
 
@@ -751,6 +766,7 @@ const openStatusModal = (item: HoSoData) => {
     ngayHen: '',
     gioHen: ''
   }
+  showDetailModal.value = false
   showStatusModal.value = true
 }
 
@@ -826,8 +842,8 @@ const getStatusClass = (status: number): string => {
 
 const formatDate = (dateStr: string | null): string => {
   if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('vi-VN')
+  const d = new Date(dateStr)
+  return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth() + 1).toString().padStart(2,'0')}/${d.getFullYear()}`
 }
 
 const isOverdue = (deadline: string | null): boolean => {

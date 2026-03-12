@@ -111,7 +111,47 @@
 
               <!-- Reply Form -->
                <div class="pt-4 border-t">
-                  <label class="block text-sm font-medium mb-2">Thêm câu trả lời</label>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium">Thêm câu trả lời</label>
+                    <!-- Template picker -->
+                    <div class="relative" ref="templatePickerRef">
+                      <button
+                        type="button"
+                        @click="showTemplatePicker = !showTemplatePicker"
+                        class="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                      >
+                        <BookOpen class="w-3.5 h-3.5" />
+                        Dùng mẫu có sẵn
+                        <ChevronDown class="w-3 h-3" :class="{ 'rotate-180': showTemplatePicker }" />
+                      </button>
+                      <div
+                        v-if="showTemplatePicker"
+                        class="absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden"
+                      >
+                        <div class="p-2 border-b bg-gray-50">
+                          <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2">Chọn mẫu phản hồi</p>
+                        </div>
+                        <div class="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                          <div v-if="defaultReplies.length === 0" class="p-4 text-center text-sm text-gray-400">
+                            Chưa có mẫu nào. Vào <strong>Phản hồi mặc định</strong> để thêm.
+                          </div>
+                          <button
+                            v-for="tmpl in defaultReplies"
+                            :key="tmpl.id"
+                            type="button"
+                            @click="applyTemplate(tmpl.content)"
+                            class="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors group"
+                          >
+                            <div class="flex items-center gap-2 mb-0.5">
+                              <span class="text-xs px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 font-medium">{{ tmpl.category }}</span>
+                            </div>
+                            <p class="text-sm font-medium text-gray-800 group-hover:text-blue-700">{{ tmpl.title }}</p>
+                            <p class="text-xs text-gray-400 mt-0.5 line-clamp-2">{{ tmpl.content }}</p>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <textarea 
                     v-model="replyContent" 
                     rows="3" 
@@ -138,9 +178,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, h } from 'vue'
+import { ref, onMounted, watch, h, onBeforeUnmount } from 'vue'
 import { feedbackApi, type Feedback } from '@/services/api'
-import { RefreshCw, Eye, X, MessageSquare, FileText, CreditCard, Loader2 } from 'lucide-vue-next'
+import { RefreshCw, Eye, X, MessageSquare, FileText, CreditCard, Loader2, BookOpen, ChevronDown } from 'lucide-vue-next'
+import { useDefaultReplies } from '@/lib/useDefaultReplies'
 import { toast } from 'vue-sonner'
 import Card from '@/components/ui/card/Card.vue'
 import CardHeader from '@/components/ui/card/CardHeader.vue'
@@ -158,11 +199,32 @@ const currentTab = ref<number | undefined>(undefined)
 const selectedFeedback = ref<Feedback | null>(null)
 const replyContent = ref('')
 
+// Default reply templates
+const { replies: defaultReplies } = useDefaultReplies()
+const showTemplatePicker = ref(false)
+const templatePickerRef = ref<HTMLElement | null>(null)
+
+function applyTemplate(content: string) {
+  replyContent.value = content
+  showTemplatePicker.value = false
+}
+
+function handleOutsideClick(e: MouseEvent) {
+  if (templatePickerRef.value && !templatePickerRef.value.contains(e.target as Node)) {
+    showTemplatePicker.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', handleOutsideClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handleOutsideClick)
+})
+
 const tabs = [
-  { label: 'Tất cả', value: undefined },
-  { label: 'Mới gửi', value: 0 },
-  { label: 'Đang xử lý', value: 1 },
-  { label: 'Đã giải quyết', value: 2 },
+   { label: 'Tất cả', value: undefined },
 ]
 
 // Table Columns Definition
@@ -196,14 +258,7 @@ const columns: ColumnDef<Feedback>[] = [
         }, () => getTypeLabel(type))
      }
   },
-  {
-     accessorKey: 'status',
-     header: 'Trạng thái',
-     cell: ({ row }) => {
-        const status = row.getValue('status') as number
-        return h(Badge, { variant: getStatusVariant(status) }, () => getStatusLabel(status))
-     }
-  },
+
   {
      accessorKey: 'createdAt',
      header: 'Ngày gửi',
@@ -286,7 +341,8 @@ onMounted(() => {
 // Helpers
 const formatDate = (str: string) => {
     if (!str) return ''
-    return new Date(str).toLocaleString('vi-VN')
+    const d = new Date(str)
+    return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')} ${d.getDate().toString().padStart(2,'0')}/${(d.getMonth() + 1).toString().padStart(2,'0')}/${d.getFullYear()}`
 }
 
 const getTypeLabel = (type: number) => {

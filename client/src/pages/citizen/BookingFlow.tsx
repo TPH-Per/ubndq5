@@ -6,11 +6,12 @@ import Swal from 'sweetalert2';
 import {
   Search, Clock, FileText, ChevronRight, Calendar as CalendarIcon,
   MapPin, Camera, Scan, CheckCircle2, Loader2,
-  Briefcase, GraduationCap, Heart, Scale, HardHat, FileCheck, Landmark
+  Briefcase, GraduationCap, Heart, Scale, HardHat, FileCheck, Landmark, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../../components/ui/Button';
 import { format, addDays, isSameDay } from 'date-fns';
+import { vi } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Mappings for icons/colors based on specialty name (since API only returns ID and Name)
@@ -30,6 +31,56 @@ const getCategoryStyle = (name: string) => {
   return CATEGORY_STYLES[key];
 };
 
+const DobInput = ({ value, onChange }: { value: string, onChange: (val: string) => void }) => {
+  const parts = value ? value.split('-') : ['', '', ''];
+  const pY = parts[0] || '';
+  const pM = parts[1] || '';
+  const pD = parts[2] || '';
+
+  const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 100 }, (_, i) => String(currentYear - i));
+
+  const update = (newD: string, newM: string, newY: string) => {
+    if (newD && newM && newY) {
+      onChange(`${newY}-${newM}-${newD}`);
+    } else {
+      // Incomplete date format, keep parsing or store partial
+      onChange(`${newY || 'yyyy'}-${newM || 'mm'}-${newD || 'dd'}`);
+    }
+  }
+
+  return (
+    <div className="flex gap-2 w-full">
+      <select
+        value={pD.length === 2 && pD !== 'dd' ? pD : ''}
+        onChange={e => update(e.target.value, pM, pY)}
+        className="flex-1 p-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+      >
+        <option value="" disabled>Ngày</option>
+        {days.map(day => <option key={day} value={day}>{day}</option>)}
+      </select>
+      <select
+        value={pM.length === 2 && pM !== 'mm' ? pM : ''}
+        onChange={e => update(pD, e.target.value, pY)}
+        className="flex-1 p-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+      >
+        <option value="" disabled>Tháng</option>
+        {months.map(month => <option key={month} value={month}>{month}</option>)}
+      </select>
+      <select
+        value={pY.length === 4 && pY !== 'yyyy' ? pY : ''}
+        onChange={e => update(pD, pM, e.target.value)}
+        className="flex-1 p-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+      >
+        <option value="" disabled>Năm</option>
+        {years.map(year => <option key={year} value={year}>{year}</option>)}
+      </select>
+    </div>
+  );
+};
+
 export const BookingFlow = () => {
   const navigate = useNavigate();
   const { bookAppointment, myAppointments, citizenName, setCitizenName, citizenId, setCitizenId } = useSimulation();
@@ -46,7 +97,7 @@ export const BookingFlow = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({ fullName: citizenName, phone: '0901234567', cccd: citizenId });
+  const [formData, setFormData] = useState({ fullName: citizenName, phone: '0901234567', cccd: citizenId, birthDate: '', notes: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
@@ -112,6 +163,34 @@ export const BookingFlow = () => {
   const handleBooking = async () => {
     if (!selectedService || !selectedDate || !selectedTime) return;
 
+    if (!formData.birthDate) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Thiếu thông tin',
+        text: 'Vui lòng nhập ngày sinh của bạn.',
+        confirmButtonColor: '#3b82f6'
+      });
+      return;
+    }
+
+    const birthDate = new Date(formData.birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age < 15) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Chưa đủ tuổi',
+        text: 'Công dân phải đủ từ 15 tuổi trở lên mới được phép đặt lịch hẹn trực tuyến.',
+        confirmButtonColor: '#3b82f6'
+      });
+      return;
+    }
+
     setIsBooking(true);
     // Update context user info if changed
     if (formData.fullName !== citizenName) setCitizenName(formData.fullName);
@@ -122,7 +201,7 @@ export const BookingFlow = () => {
       date: selectedDate,
       time: selectedTime,
       phone: formData.phone,
-      notes: "Đặt từ Zalo Mini App"
+      notes: formData.notes || undefined
     });
 
     setIsBooking(false);
@@ -274,8 +353,11 @@ export const BookingFlow = () => {
   // --- Step 3: Select Date & Time ---
   const Step3 = () => {
     const today = new Date();
-    // Display next 14 days
-    const dates = Array.from({ length: 14 }, (_, i) => addDays(today, i));
+    // Generate 21 days and keep only weekdays (Mon–Fri), up to 14 working days
+    const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+    const dates = Array.from({ length: 28 }, (_, i) => addDays(today, i))
+      .filter(d => !isWeekend(d))
+      .slice(0, 14);
 
     return (
       <motion.div
@@ -289,20 +371,20 @@ export const BookingFlow = () => {
             <h3 className="font-bold text-lg text-gray-800">Chọn ngày hẹn</h3>
             <div className="flex gap-2">
               <span className="text-xs font-medium bg-blue-50 text-blue-600 px-2 py-1 rounded-lg">
-                Tháng {format(today, 'MM/yyyy')}
+                {format(today, "'Tháng' MM, yyyy", { locale: vi })}
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center mb-2">
-            {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d, i) => (
+          <div className="grid grid-cols-5 gap-1 text-center mb-2">
+            {['T2', 'T3', 'T4', 'T5', 'T6'].map((d, i) => (
               <span key={i} className="text-[10px] font-bold text-gray-400 uppercase">{d}</span>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-y-3 gap-x-1">
-            {/* Offset start day (simple approximation for demo) */}
-            {Array.from({ length: new Date().getDay() }).map((_, i) => <div key={`empty-${i}`} />)}
+          <div className="grid grid-cols-5 gap-y-3 gap-x-1">
+            {/* Offset: align first date to correct weekday column (Mon=0 ... Fri=4) */}
+            {Array.from({ length: ((dates[0]?.getDay() ?? 1) + 6) % 7 }).map((_, i) => <div key={`empty-${i}`} />)}
 
             {dates.map((date, i) => {
               const isSelected = selectedDate && isSameDay(date, selectedDate);
@@ -321,6 +403,9 @@ export const BookingFlow = () => {
                 >
                   <span className={cn("text-xs font-bold", isSelected ? "text-white" : "text-gray-700")}>
                     {format(date, 'd')}
+                  </span>
+                  <span className={cn("text-[9px]", isSelected ? "text-white/80" : "text-gray-400")}>
+                    {format(date, 'EEE', { locale: vi })}
                   </span>
                   {isToday && !isSelected && (
                     <span className="absolute bottom-1 w-1 h-1 bg-primary rounded-full" />
@@ -350,26 +435,37 @@ export const BookingFlow = () => {
                 </div>
               ) : availableSlots.length > 0 ? (
                 <div className="grid grid-cols-3 gap-3">
-                  {availableSlots.map((slot) => (
-                    <button
-                      key={slot.time}
-                      onClick={() => setSelectedTime(slot.time)}
-                      className={cn(
-                        "py-3 px-2 rounded-xl border text-sm font-semibold transition-all shadow-sm",
-                        selectedTime === slot.time
-                          ? "bg-primary border-primary text-white ring-2 ring-primary/20"
-                          : "bg-white border-gray-100 text-gray-700 hover:border-primary/50 hover:bg-blue-50"
-                      )}
-                    >
-                      {slot.time}
-                      <span className={cn(
-                        "block text-[10px] font-normal mt-0.5",
-                        selectedTime === slot.time ? "text-blue-100" : "text-gray-400"
-                      )}>
-                        Còn {slot.available}/{slot.maxCapacity}
-                      </span>
-                    </button>
-                  ))}
+                  {availableSlots.map((slot) => {
+                    const isToday = selectedDate ? isSameDay(selectedDate, new Date()) : false;
+                    const [hours, minutes] = slot.time.split(':').map(Number);
+                    const slotTimeCheck = new Date();
+                    slotTimeCheck.setHours(hours, minutes, 0, 0);
+                    const isPast = isToday && slotTimeCheck < new Date();
+
+                    return (
+                      <button
+                        key={slot.time}
+                        onClick={() => !isPast && setSelectedTime(slot.time)}
+                        disabled={isPast}
+                        className={cn(
+                          "py-3 px-2 rounded-xl border text-sm font-semibold transition-all shadow-sm",
+                          isPast
+                            ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-70"
+                            : selectedTime === slot.time
+                              ? "bg-primary border-primary text-white ring-2 ring-primary/20"
+                              : "bg-white border-gray-100 text-gray-700 hover:border-primary/50 hover:bg-blue-50"
+                        )}
+                      >
+                        {slot.time}
+                        <span className={cn(
+                          "block text-[10px] font-normal mt-0.5",
+                          isPast ? "text-gray-400" : selectedTime === slot.time ? "text-blue-100" : "text-gray-400"
+                        )}>
+                          {isPast ? 'Đã qua' : 'Còn trống'}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center p-4 bg-gray-50 rounded-xl text-gray-500 text-sm">
@@ -425,10 +521,13 @@ export const BookingFlow = () => {
             className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Ngày sinh</label>
-            <input type="date" className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm" />
+            <DobInput
+              value={formData.birthDate}
+              onChange={(val) => setFormData({ ...formData, birthDate: val })}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
@@ -455,22 +554,38 @@ export const BookingFlow = () => {
             maxLength={12}
           />
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú / Mô tả hồ sơ <span className="text-gray-400 font-normal">(không bắt buộc)</span></label>
+          <textarea
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            rows={2}
+            placeholder="Nhập ghi chú hoặc mô tả thêm về nhu cầu của bạn..."
+            className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+          />
+        </div>
       </form>
 
       <div className="bg-yellow-50 p-4 rounded-xl">
         <h4 className="font-bold text-sm text-yellow-800 mb-2">Giấy tờ bắt buộc</h4>
         <ul className="space-y-2">
-          {selectedService?.requiredDocuments?.map((doc: string, i: number) => (
-            <li key={i} className="flex items-start gap-2 text-xs text-yellow-700">
-              <div className="mt-0.5 h-3 w-3 rounded border border-yellow-600 flex-shrink-0" />
-              <span>{doc}</span>
-            </li>
-          )) || (
-              <li className="flex items-start gap-2 text-xs text-yellow-700">
-                <div className="mt-0.5 h-3 w-3 rounded border border-yellow-600 flex-shrink-0" />
-                <span>CCCD gắn chip (Bản chính + Photo)</span>
-              </li>
-            )}
+          {(() => {
+            const docs: string[] = selectedService?.requiredDocuments ?? [];
+            return docs.length > 0
+              ? docs.map((doc: string, i: number) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-yellow-700">
+                    <div className="mt-0.5 h-3 w-3 rounded border border-yellow-600 flex-shrink-0" />
+                    <span>{doc}</span>
+                  </li>
+                ))
+              : (
+                  <li className="flex items-start gap-2 text-xs text-yellow-700">
+                    <div className="mt-0.5 h-3 w-3 rounded border border-yellow-600 flex-shrink-0" />
+                    <span>CCCD gắn chip (Bản chính + Photo)</span>
+                  </li>
+                );
+          })()}
         </ul>
       </div>
 
@@ -535,13 +650,46 @@ export const BookingFlow = () => {
                 <p className="font-medium text-sm">{booking.procedureName || booking.procedure}</p>
               </div>
             </div>
-            {/* Add statuses or other info if available */}
+
+            {/* Mô tả thủ tục */}
+            {selectedService?.description && (
+              <div className="flex items-start gap-3 pt-3 border-t border-gray-100">
+                <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-blue-600 font-bold uppercase tracking-wide mb-0.5">Mô tả thủ tục</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{selectedService.description}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Giấy tờ cần mang theo */}
+            {(() => {
+              const docs: string[] = selectedService?.requiredDocuments ?? [];
+              return docs.length > 0 ? (
+                <div className="pt-3 border-t border-yellow-100">
+                  <div className="bg-yellow-50 rounded-xl p-4">
+                    <p className="text-xs text-yellow-700 font-bold uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                      <span className="inline-block w-2 h-2 rounded-full bg-yellow-500" />
+                      Giấy tờ cần mang theo
+                    </p>
+                    <ul className="space-y-1.5">
+                      {docs.map((doc: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2 text-xs text-yellow-800">
+                          <span className="mt-0.5 h-3.5 w-3.5 rounded border border-yellow-500 flex-shrink-0 flex items-center justify-center text-[8px] font-bold text-yellow-600">{idx + 1}</span>
+                          <span>{doc}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
 
         <div className="flex gap-3 w-full">
           <Button
-            onClick={() => navigate(`/citizen/queue/${booking.queueDisplay}`)} // Use ticket code for tracking
+            onClick={() => navigate(`/citizen/queue/${booking.id}`)} // Use numeric application id for tracking
             className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white"
           >
             Theo dõi trực tiếp

@@ -75,6 +75,18 @@ const routes: RouteRecordRaw[] = [
                 meta: { title: 'Tiếp nhận phản ánh' }
             },
             {
+                path: 'default-replies',
+                name: 'DefaultRepliesManagement',
+                component: () => import('@/views/staff/DefaultRepliesManagement.vue'),
+                meta: { title: 'Phản hồi mặc định' }
+            },
+            {
+                path: 'procedures',
+                name: 'StaffProcedureManagement',
+                component: () => import('@/views/staff/StaffProcedureManagement.vue'),
+                meta: { title: 'Quản lý thủ tục' }
+            },
+            {
                 path: 'profile',
                 name: 'StaffProfile',
                 component: () => import('@/views/shared/ProfilePage.vue'),
@@ -122,6 +134,12 @@ const routes: RouteRecordRaw[] = [
                 name: 'ProcedureManagement',
                 component: () => import('@/views/admin/ProcedureManagement.vue'),
                 meta: { title: 'Quản lý thủ tục' }
+            },
+            {
+                path: 'hoso',
+                name: 'AdminHoSoManagement',
+                component: () => import('@/views/admin/AdminHoSoManagement.vue'),
+                meta: { title: 'Quản lý hồ sơ' }
             },
             {
                 path: 'reports',

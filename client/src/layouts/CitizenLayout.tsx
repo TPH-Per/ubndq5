@@ -12,7 +12,6 @@ export const CitizenLayout = () => {
   const navItems = [
     { icon: Home, label: 'Trang chủ', path: '/citizen' },
     { icon: Calendar, label: 'Lịch hẹn', path: '/citizen/appointments' },
-    { icon: FileText, label: 'Hồ sơ', path: '/citizen/documents' },
     { icon: User, label: 'Cá nhân', path: '/citizen/profile' },
   ];
 

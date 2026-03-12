@@ -1,33 +1,15 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSimulation } from '../../context/SimulationContext';
-import { Phone, MessageSquare, ChevronRight, X, MessageCircle, Edit2, Save, User, CreditCard } from 'lucide-react';
+import { Phone, MessageSquare, ChevronRight, X, MessageCircle, User, CreditCard } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Button } from '../../components/ui/Button';
 
 export const Profile = () => {
   const navigate = useNavigate();
-  const { citizenId, citizenName, setCitizenId, setCitizenName, refreshAppointments } = useSimulation();
+  const { citizenId, citizenName } = useSimulation();
 
   const [showContact, setShowContact] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editCitizenId, setEditCitizenId] = useState(citizenId);
-  const [editCitizenName, setEditCitizenName] = useState(citizenName);
-
-  const handleSave = async () => {
-    setCitizenId(editCitizenId);
-    setCitizenName(editCitizenName);
-    setIsEditing(false);
-    // Refresh appointments for the new citizenId
-    await refreshAppointments();
-  };
-
-  const handleCancel = () => {
-    setEditCitizenId(citizenId);
-    setEditCitizenName(citizenName);
-    setIsEditing(false);
-  };
 
   const menuItems = [
     {
@@ -58,55 +40,11 @@ export const Profile = () => {
             </div>
           </div>
 
-          {!isEditing ? (
-            <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">{citizenName}</h2>
-              <div className="flex items-center gap-2 mt-2 bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100">
-                <CreditCard className="h-3.5 w-3.5 text-primary" />
-                <span className="text-sm font-bold text-primary">{citizenId}</span>
-              </div>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="mt-4 flex items-center gap-2 text-sm text-gray-500 hover:text-primary transition-colors"
-              >
-                <Edit2 className="h-4 w-4" />
-                Chỉnh sửa thông tin
-              </button>
-            </>
-          ) : (
-            <div className="w-full max-w-sm space-y-4 mt-2">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Họ và tên</label>
-                <input
-                  type="text"
-                  value={editCitizenName}
-                  onChange={(e) => setEditCitizenName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center font-medium"
-                  placeholder="Nhập họ và tên"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Số CCCD</label>
-                <input
-                  type="text"
-                  value={editCitizenId}
-                  onChange={(e) => setEditCitizenId(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center font-mono tracking-wider"
-                  placeholder="Nhập số CCCD (12 số)"
-                  maxLength={12}
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" fullWidth onClick={handleCancel}>
-                  Hủy
-                </Button>
-                <Button fullWidth onClick={handleSave} className="gap-2">
-                  <Save className="h-4 w-4" />
-                  Lưu
-                </Button>
-              </div>
-            </div>
-          )}
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">{citizenName}</h2>
+          <div className="flex items-center gap-2 mt-2 bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100">
+            <CreditCard className="h-3.5 w-3.5 text-primary" />
+            <span className="text-sm font-bold text-primary">{citizenId}</span>
+          </div>
         </div>
       </div>
 

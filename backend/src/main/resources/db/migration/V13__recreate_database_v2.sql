@@ -31,24 +31,8 @@ CREATE TABLE Role (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- =============================================
--- 2. CITIZEN (citizen_id = CCCD as Primary Key)
--- =============================================
-CREATE TABLE Citizen (
-    citizen_id VARCHAR(12) PRIMARY KEY,
-    -- CCCD as PK
-    full_name VARCHAR(100) NOT NULL,
-    date_of_birth DATE,
-    gender VARCHAR(10),
-    address TEXT,
-    phone VARCHAR(15),
-    email VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
-);
-CREATE INDEX idx_citizen_phone ON Citizen(phone);
-CREATE INDEX idx_citizen_name ON Citizen(full_name);
--- =============================================
--- 3. ZALO_ACCOUNT
+-- 2. ZALO_ACCOUNT
+-- Chỉ lưu zalo_id để gửi thông báo, không liên kết với công dân
 -- =============================================
 CREATE TABLE ZaloAccount (
     id SERIAL PRIMARY KEY,
@@ -57,7 +41,7 @@ CREATE TABLE ZaloAccount (
     is_active BOOLEAN DEFAULT TRUE
 );
 -- =============================================
--- 4. PROCEDURE_COUNTER (Master)
+-- 3. PROCEDURE_TYPE (Master - nhóm thủ tục theo chuyên môn)
 -- =============================================
 CREATE TABLE ProcedureCounter (
     id SERIAL PRIMARY KEY,
@@ -65,7 +49,7 @@ CREATE TABLE ProcedureCounter (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- =============================================
--- 5. PROCEDURE
+-- 4. PROCEDURE
 -- =============================================
 CREATE TABLE Procedure (
     id SERIAL PRIMARY KEY,
@@ -82,7 +66,7 @@ CREATE TABLE Procedure (
     CONSTRAINT fk_procedure_pc FOREIGN KEY (procedure_counter_id) REFERENCES ProcedureCounter(id)
 );
 -- =============================================
--- 6. COUNTER
+-- 5. COUNTER (Quầy tiếp nhận)
 -- =============================================
 CREATE TABLE Counter (
     id SERIAL PRIMARY KEY,
@@ -96,7 +80,7 @@ CREATE TABLE Counter (
     CONSTRAINT fk_counter_pc FOREIGN KEY (procedure_counter_id) REFERENCES ProcedureCounter(id)
 );
 -- =============================================
--- 7. STAFF
+-- 6. STAFF (Nhân viên)
 -- =============================================
 CREATE TABLE Staff (
     id SERIAL PRIMARY KEY,
@@ -117,20 +101,25 @@ CREATE INDEX idx_staff_counter ON Staff(counter_id)
 WHERE is_active = TRUE;
 CREATE INDEX idx_staff_role ON Staff(role_id);
 -- =============================================
--- 8. APPLICATION
+-- 7. APPLICATION (Hồ sơ)
+-- Thông tin công dân lưu trực tiếp - không FK sang bảng Citizen riêng
+-- ZaloAccount chỉ dùng để gửi thông báo
 -- =============================================
 CREATE TABLE Application (
     id SERIAL PRIMARY KEY,
     application_code VARCHAR(20) UNIQUE NOT NULL,
     procedure_id INT NOT NULL,
-    citizen_id VARCHAR(12) NOT NULL,
-    -- FK to Citizen.citizen_id (CCCD)
+    -- Thông tin công dân (inline - không cần bảng Citizen riêng)
+    citizen_cccd VARCHAR(12) NOT NULL,
+    citizen_name VARCHAR(100) NOT NULL,
+    citizen_phone VARCHAR(15),
+    citizen_email VARCHAR(100),
+    -- Zalo (chỉ lưu để gửi thông báo)
     zalo_account_id INT,
-    current_phase INT NOT NULL DEFAULT 1,
+    current_phase INT NOT NULL DEFAULT 2,
+    -- Bắt đầu ở PENDING
     queue_number INT,
     queue_prefix VARCHAR(5),
-    appointment_date DATE,
-    expected_time TIME,
     deadline DATE,
     priority INT DEFAULT 0,
     cancel_reason TEXT,
@@ -138,27 +127,30 @@ CREATE TABLE Application (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
     CONSTRAINT fk_app_procedure FOREIGN KEY (procedure_id) REFERENCES Procedure(id),
-    CONSTRAINT fk_app_citizen FOREIGN KEY (citizen_id) REFERENCES Citizen(citizen_id),
-    CONSTRAINT fk_app_zalo FOREIGN KEY (zalo_account_id) REFERENCES ZaloAccount(id),
-    CONSTRAINT uq_app_queue UNIQUE (appointment_date, queue_prefix, queue_number)
+    CONSTRAINT fk_app_zalo FOREIGN KEY (zalo_account_id) REFERENCES ZaloAccount(id)
 );
-CREATE INDEX idx_app_citizen ON Application(citizen_id);
+CREATE INDEX idx_app_cccd ON Application(citizen_cccd);
 CREATE INDEX idx_app_procedure ON Application(procedure_id);
 CREATE INDEX idx_app_phase ON Application(current_phase)
 WHERE current_phase < 4;
-CREATE INDEX idx_app_date ON Application(appointment_date);
 -- =============================================
--- 9. APPLICATION_HISTORY
+-- 8. APPLICATION_HISTORY (Lịch sử xử lý hồ sơ)
 -- =============================================
 CREATE TABLE ApplicationHistory (
     id SERIAL PRIMARY KEY,
     application_id INT NOT NULL,
-    counter_id INT NOT NULL,
+    counter_id INT,
+    -- Nullable: cho phép ghi từ Mini App (không có quầy)
     staff_id INT,
     phase_from INT,
     phase_to INT NOT NULL,
     action VARCHAR(50) NOT NULL,
     content TEXT,
+    -- Thông tin lịch hẹn (lưu theo từng lần)
+    appointment_date DATE,
+    expected_time TIME,
+    queue_number INT,
+    queue_prefix VARCHAR(5),
     form_data JSONB,
     attachments JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -167,31 +159,53 @@ CREATE TABLE ApplicationHistory (
     CONSTRAINT fk_history_staff FOREIGN KEY (staff_id) REFERENCES Staff(id)
 );
 CREATE INDEX idx_history_app ON ApplicationHistory(application_id);
-CREATE INDEX idx_history_counter ON ApplicationHistory(counter_id);
+CREATE INDEX idx_history_appointment ON ApplicationHistory(appointment_date);
 CREATE INDEX idx_history_time ON ApplicationHistory(created_at DESC);
 -- =============================================
--- 10. REPORT
+-- 9. APPOINTMENT (Lịch hẹn cụ thể - slot đặt chỗ)
+-- =============================================
+CREATE TABLE Appointment (
+    id SERIAL PRIMARY KEY,
+    application_id INT NOT NULL,
+    staff_id INT,
+    appointment_date DATE NOT NULL,
+    appointment_time TIME NOT NULL,
+    status INT NOT NULL DEFAULT 0,
+    -- 0:SCHEDULED 1:COMPLETED 2:CANCELLED
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_appointment_app FOREIGN KEY (application_id) REFERENCES Application(id),
+    CONSTRAINT fk_appointment_staff FOREIGN KEY (staff_id) REFERENCES Staff(id)
+);
+CREATE INDEX idx_appointment_date ON Appointment(appointment_date);
+CREATE INDEX idx_appointment_status ON Appointment(status);
+-- =============================================
+-- 10. REPORT (Phản ánh - dùng bởi Staff)
+-- Thông tin công dân lưu inline, application là optional
 -- =============================================
 CREATE TABLE Report (
     id SERIAL PRIMARY KEY,
-    citizen_id VARCHAR(12) NOT NULL,
-    -- FK to Citizen.citizen_id (CCCD)
-    application_id INT NOT NULL,
+    -- Thông tin công dân (inline)
+    citizen_cccd VARCHAR(12) NOT NULL,
+    citizen_name VARCHAR(100),
+    citizen_phone VARCHAR(15),
+    -- Liên kết hồ sơ (optional)
+    application_id INT,
     report_type INT NOT NULL DEFAULT 0,
+    -- 0:Góp ý, 1:Khiếu nại, 2:Khen ngợi
     title VARCHAR(200),
     content TEXT NOT NULL,
     attachments JSONB,
     status INT DEFAULT 0,
+    -- 0:Mới, 1:Đang xử lý, 2:Đã giải quyết
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_report_citizen FOREIGN KEY (citizen_id) REFERENCES Citizen(citizen_id),
     CONSTRAINT fk_report_app FOREIGN KEY (application_id) REFERENCES Application(id)
 );
-CREATE INDEX idx_report_citizen ON Report(citizen_id);
+CREATE INDEX idx_report_cccd ON Report(citizen_cccd);
 CREATE INDEX idx_report_app ON Report(application_id);
 CREATE INDEX idx_report_status ON Report(status)
 WHERE status < 2;
 -- =============================================
--- 11. REPLY
+-- 11. REPLY (Phản hồi của nhân viên)
 -- =============================================
 CREATE TABLE Reply (
     id SERIAL PRIMARY KEY,
@@ -210,19 +224,16 @@ CREATE INDEX idx_reply_report ON Reply(report_id);
 CREATE VIEW vw_queue_today AS
 SELECT a.id,
     a.application_code,
-    a.queue_prefix || a.queue_number AS queue_display,
+    COALESCE(a.queue_prefix, '') || COALESCE(a.queue_number::TEXT, '') AS queue_display,
     a.queue_number,
-    c.full_name AS citizen_name,
-    c.phone AS citizen_phone,
+    a.citizen_name,
+    a.citizen_phone,
     p.procedure_name,
-    a.expected_time,
     a.current_phase,
     a.created_at
 FROM Application a
-    JOIN Citizen c ON a.citizen_id = c.citizen_id
     JOIN Procedure p ON a.procedure_id = p.id
-WHERE a.appointment_date = CURRENT_DATE
-    AND a.current_phase IN (1, 3)
+WHERE a.current_phase IN (1, 3)
 ORDER BY a.queue_number;
 CREATE VIEW vw_daily_stats AS
 SELECT h.counter_id,
@@ -254,7 +265,7 @@ GROUP BY h.counter_id,
 INSERT INTO Role (role_name, display_name, description)
 VALUES ('Admin', 'Quản trị viên', 'Full system access'),
     ('Staff', 'Nhân viên', 'Counter staff');
--- ProcedureCounter records
+-- ProcedureCounter (procedure types)
 INSERT INTO ProcedureCounter (is_active)
 VALUES (TRUE),
     (TRUE),
@@ -286,81 +297,45 @@ VALUES ('TT001', 'Đăng ký khai sinh', 3, 1),
     ),
     ('TT004', 'Đăng ký biến động đất đai', 15, 2),
     ('TT005', 'Cấp giấy phép kinh doanh', 10, 3);
--- Admin user (password: admin123)
-INSERT INTO Staff (
-        staff_code,
-        full_name,
-        email,
-        password_hash,
-        role_id,
-        counter_id
+-- Dữ liệu này sẽ được khởi tạo bởi DataInitializer trong backend
+-- (Đảm bảo password được hash bằng BCrypt chuẩn từ Java)
+-- Sample applications (citizen info inline)
+INSERT INTO Application (
+        application_code,
+        procedure_id,
+        citizen_cccd,
+        citizen_name,
+        citizen_phone,
+        citizen_email,
+        current_phase,
+        queue_number,
+        queue_prefix,
+        deadline,
+        priority
     )
 VALUES (
-        'ADMIN',
-        'Administrator',
-        'admin@ubndq5.gov.vn',
-        '$2a$10$N.zmhk0GD2LdMVz2G5s1.u3GVZQl5mNJIY7pVU4VzjLGjZ6q0z3Iy',
+        'HS-20260101-001',
         1,
-        NULL
-    );
--- Sample staff (password: 123456)
-INSERT INTO Staff (
-        staff_code,
-        full_name,
-        email,
-        password_hash,
-        role_id,
-        counter_id
-    )
-VALUES (
-        'NV001',
-        'Nguyễn Văn A',
-        'nva@ubndq5.gov.vn',
-        '$2a$10$N.zmhk0GD2LdMVz2G5s1.u3GVZQl5mNJIY7pVU4VzjLGjZ6q0z3Iy',
-        2,
-        1
-    ),
-    (
-        'NV002',
-        'Trần Thị B',
-        'ttb@ubndq5.gov.vn',
-        '$2a$10$N.zmhk0GD2LdMVz2G5s1.u3GVZQl5mNJIY7pVU4VzjLGjZ6q0z3Iy',
-        2,
-        2
-    ),
-    (
-        'NV003',
-        'Lê Văn C',
-        'lvc@ubndq5.gov.vn',
-        '$2a$10$N.zmhk0GD2LdMVz2G5s1.u3GVZQl5mNJIY7pVU4VzjLGjZ6q0z3Iy',
-        2,
-        3
-    );
--- Sample citizens (citizen_id = CCCD)
-INSERT INTO Citizen (
-        citizen_id,
-        full_name,
-        date_of_birth,
-        gender,
-        address,
-        phone,
-        email
-    )
-VALUES (
         '079001234567',
         'Phạm Văn X',
-        '1990-05-15',
-        'Male',
-        '123 Nguyễn Trãi, Q5',
         '0901234567',
-        'pvx@gmail.com'
+        'pvx@gmail.com',
+        2,
+        1,
+        'TT',
+        CURRENT_DATE + 3,
+        0
     ),
     (
+        'HS-20260101-002',
+        2,
         '079001234568',
         'Hoàng Thị Y',
-        '1985-10-20',
-        'Female',
-        '456 Trần Hưng Đạo, Q5',
         '0901234568',
-        'hty@gmail.com'
+        'hty@gmail.com',
+        2,
+        2,
+        'TT',
+        CURRENT_DATE + 5,
+        0
     );

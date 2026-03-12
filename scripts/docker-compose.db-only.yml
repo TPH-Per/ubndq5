@@ -1,0 +1,35 @@
+# ==============================================================================
+# docker-compose.db-only.yml - Chỉ chạy PostgreSQL cho dev local
+# Dùng khi chạy backend bằng mvnw (không dùng Docker cho backend)
+#
+# Chạy từ thư mục gốc (HANHCHINHCONGQ5CHOLON/):
+#   docker compose -f scripts/docker-compose.db-only.yml up -d
+#
+# Khớp với application.properties:
+#   spring.datasource.url=jdbc:postgresql://localhost:5432/cholon_hcc
+#   spring.datasource.username=${DB_USER:myuser}
+#   spring.datasource.password=${DB_PASSWORD:secret}
+# ==============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cholon_db_dev
+    ports:
+      - "5432:5432"           # Map thẳng 5432 → khớp application.properties
+    environment:
+      POSTGRES_DB: cholon_hcc       # Khớp với datasource url
+      POSTGRES_USER: myuser         # Khớp với DB_USER default
+      POSTGRES_PASSWORD: secret     # Khớp với DB_PASSWORD default
+    volumes:
+      - cholon_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d cholon_hcc"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  cholon_pgdata_dev:
+    driver: local

@@ -15,22 +15,22 @@ import java.time.LocalDateTime;
 public class Application {
 
     // Phase constants
-    public static final int PHASE_CANCELLED = 0;
-    public static final int PHASE_QUEUE = 1;
-    public static final int PHASE_PENDING = 2;
-    public static final int PHASE_PROCESSING = 3;
-    public static final int PHASE_COMPLETED = 4;
-    public static final int PHASE_RECEIVED = 5;
-    public static final int PHASE_SUPPLEMENT = 6;
+    public static final int PHASE_CANCELLED   = 0;
+    public static final int PHASE_QUEUE       = 1;
+    public static final int PHASE_PENDING     = 2;
+    public static final int PHASE_PROCESSING  = 3;
+    public static final int PHASE_COMPLETED   = 4;
+    public static final int PHASE_RECEIVED    = 5;
+    public static final int PHASE_SUPPLEMENT  = 6;
 
     // Priority constants
     public static final int PRIORITY_NORMAL = 0;
-    public static final int PRIORITY_HIGH = 1;
+    public static final int PRIORITY_HIGH   = 1;
     public static final int PRIORITY_URGENT = 2;
 
     // Cancel type constants
-    public static final int CANCEL_NO_SHOW = 0;
-    public static final int CANCEL_SELF = 1;
+    public static final int CANCEL_NO_SHOW  = 0;
+    public static final int CANCEL_SELF     = 1;
     public static final int CANCEL_REJECTED = 2;
 
     @Id
@@ -44,25 +44,33 @@ public class Application {
     @JoinColumn(name = "procedure_id", nullable = false)
     private Procedure procedure;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "citizen_id", nullable = false)
-    private Citizen citizen; // FK to Citizen.citizenId (CCCD)
+    // ===== Thông tin công dân (inline - không FK sang bảng riêng) =====
+    @Column(name = "citizen_cccd", length = 12)
+    private String citizenCccd;
 
+    @Column(name = "citizen_name", length = 100)
+    private String citizenName;
+
+    @Column(name = "citizen_phone", length = 15)
+    private String citizenPhone;
+
+    @Column(name = "citizen_email", length = 100)
+    private String citizenEmail;
+
+    // ===== Zalo (chỉ dùng để gửi thông báo) =====
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "zalo_account_id")
     private ZaloAccount zaloAccount;
 
     @Column(name = "current_phase", nullable = false)
     @Builder.Default
-    private Integer currentPhase = PHASE_QUEUE;
+    private Integer currentPhase = PHASE_PENDING;
 
     @Column(name = "queue_number")
     private Integer queueNumber;
 
     @Column(name = "queue_prefix")
     private String queuePrefix;
-
-    // appointment_date và expected_time đã chuyển sang application_history
 
     @Column(name = "deadline")
     private LocalDate deadline;
@@ -93,7 +101,7 @@ public class Application {
         updatedAt = LocalDateTime.now();
     }
 
-    // Helper methods
+    // Helper: hiển thị số thứ tự dạng "TT001"
     public String getQueueDisplay() {
         if (queuePrefix != null && queueNumber != null) {
             return queuePrefix + String.format("%03d", queueNumber);

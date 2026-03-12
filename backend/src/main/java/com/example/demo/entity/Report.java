@@ -14,25 +14,32 @@ import java.time.LocalDateTime;
 public class Report {
 
     // Report type constants
-    public static final int TYPE_FEEDBACK = 0;
-    public static final int TYPE_COMPLAINT = 1;
-    public static final int TYPE_PRAISE = 2;
+    public static final int TYPE_FEEDBACK  = 0; // Góp ý
+    public static final int TYPE_COMPLAINT = 1; // Khiếu nại
+    public static final int TYPE_PRAISE    = 2; // Khen ngợi
 
     // Status constants
-    public static final int STATUS_NEW = 0;
+    public static final int STATUS_NEW        = 0;
     public static final int STATUS_PROCESSING = 1;
-    public static final int STATUS_RESOLVED = 2;
+    public static final int STATUS_RESOLVED   = 2;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "citizen_id", nullable = false)
-    private Citizen citizen; // FK to Citizen.citizenId (CCCD)
+    // ===== Thông tin công dân (inline - không FK sang bảng riêng) =====
+    @Column(name = "citizen_cccd", nullable = false, length = 12)
+    private String citizenCccd;
 
+    @Column(name = "citizen_name", length = 100)
+    private String citizenName;
+
+    @Column(name = "citizen_phone", length = 15)
+    private String citizenPhone;
+
+    // ===== Liên kết hồ sơ (optional) =====
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "application_id", nullable = false)
+    @JoinColumn(name = "application_id")
     private Application application;
 
     @Column(name = "report_type", nullable = false)
@@ -42,7 +49,7 @@ public class Report {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "content", nullable = false)
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)

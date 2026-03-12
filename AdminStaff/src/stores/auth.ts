@@ -64,7 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
     /**
      * Có phải Admin không?
      */
-    const isAdmin = computed(() => user.value?.roleName === 'Admin');
+    const isAdmin = computed(() => user.value?.roleName?.toLowerCase() === 'admin');
 
     /**
      * Có phải NhanVien (Staff) không?

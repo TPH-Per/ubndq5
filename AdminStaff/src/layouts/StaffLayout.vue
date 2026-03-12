@@ -152,7 +152,9 @@ import {
   LogOut,
   Building2,
   ChevronRight,
-  MessageSquare
+  MessageSquare,
+  ClipboardList,
+  BookMarked
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import EditProfileModal from '@/components/shared/EditProfileModal.vue'
@@ -164,7 +166,9 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: 'Tổng quan', path: '/staff/dashboard' },
   { icon: ListOrdered, label: 'Quản lý hàng chờ', path: '/staff/queue' },
   { icon: FileStack, label: 'Quản lý hồ sơ', path: '/staff/hoso' },
+  { icon: ClipboardList, label: 'Quản lý thủ tục', path: '/staff/procedures' },
   { icon: MessageSquare, label: 'Tiếp nhận phản ánh', path: '/staff/feedbacks' },
+  { icon: BookMarked, label: 'Phản hồi mặc định', path: '/staff/default-replies' },
   { icon: UserCog, label: 'Tài khoản cá nhân', path: '/staff/profile' },
 ]
 

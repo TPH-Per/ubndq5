@@ -2,14 +2,13 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.response.ApiResponse;
 import com.example.demo.dto.response.FeedbackResponse;
-import com.example.demo.entity.Report;
+import com.example.demo.entity.Feedback;
 import com.example.demo.entity.Reply;
 import com.example.demo.entity.Staff;
-import com.example.demo.repository.ReportRepository;
+import com.example.demo.repository.FeedbackRepository;
 import com.example.demo.repository.ReplyRepository;
 import com.example.demo.repository.StaffRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class StaffFeedbackController {
 
-        private final ReportRepository reportRepository;
+        private final FeedbackRepository feedbackRepository;
         private final ReplyRepository replyRepository;
         private final StaffRepository staffRepository;
 
@@ -36,14 +35,14 @@ public class StaffFeedbackController {
         public ResponseEntity<ApiResponse<List<FeedbackResponse>>> getList(
                         @RequestParam(required = false) Integer status) {
 
-                List<Report> reports;
+                List<Feedback> feedbacks;
                 if (status != null) {
-                        reports = reportRepository.findByStatus(status);
+                        feedbacks = feedbackRepository.findByStatus(status);
                 } else {
-                        reports = reportRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+                        feedbacks = feedbackRepository.findAllOrderByCreatedAtDesc();
                 }
 
-                List<FeedbackResponse> response = reports.stream()
+                List<FeedbackResponse> response = feedbacks.stream()
                                 .map(this::mapToResponse)
                                 .collect(Collectors.toList());
 
@@ -52,9 +51,9 @@ public class StaffFeedbackController {
 
         @GetMapping("/{id}")
         public ResponseEntity<ApiResponse<FeedbackResponse>> getDetail(@PathVariable Integer id) {
-                Report report = reportRepository.findById(id)
+                Feedback feedback = feedbackRepository.findById(id)
                                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phản ánh"));
-                return ResponseEntity.ok(ApiResponse.success(mapToResponse(report)));
+                return ResponseEntity.ok(ApiResponse.success(mapToResponse(feedback)));
         }
 
         @PostMapping("/{id}/reply")
@@ -73,27 +72,27 @@ public class StaffFeedbackController {
                 Staff staff = staffRepository.findByStaffCode(authentication.getName())
                                 .orElseThrow(() -> new RuntimeException("Staff not found"));
 
-                Report report = reportRepository.findById(id)
-                                .orElseThrow(() -> new RuntimeException("Report not found"));
+                Feedback feedback = feedbackRepository.findById(id)
+                                .orElseThrow(() -> new RuntimeException("Feedback not found"));
 
                 Reply reply = Reply.builder()
-                                .report(report)
+                                .feedback(feedback)
                                 .staff(staff)
                                 .content(content)
                                 .build();
                 replyRepository.save(reply);
 
-                // Update report status to RESOLVED if it was NEW or PROCESSING
-                if (report.getStatus() != Report.STATUS_RESOLVED) {
-                        report.setStatus(Report.STATUS_RESOLVED);
-                        reportRepository.save(report);
+                if (feedback.getStatus() < Feedback.STATUS_RESOLVED) {
+                        feedback.setStatus(Feedback.STATUS_RESOLVED);
+                        feedback.setProcessedAt(LocalDateTime.now());
+                        feedbackRepository.save(feedback);
                 }
 
-                return ResponseEntity.ok(ApiResponse.success(mapToResponse(report), "Đã trả lời phản ánh"));
+                return ResponseEntity.ok(ApiResponse.success(mapToResponse(feedback), "Đã trả lời phản ánh"));
         }
 
-        private FeedbackResponse mapToResponse(Report r) {
-                List<Reply> replies = replyRepository.findByReportId(r.getId());
+        private FeedbackResponse mapToResponse(Feedback f) {
+                List<Reply> replies = replyRepository.findByFeedbackId(f.getId());
 
                 List<FeedbackResponse.ReplyDto> replyDtos = replies.stream()
                                 .map(re -> FeedbackResponse.ReplyDto.builder()
@@ -105,16 +104,15 @@ public class StaffFeedbackController {
                                 .collect(Collectors.toList());
 
                 return FeedbackResponse.builder()
-                                .id(r.getId())
-                                .type(r.getReportType())
-                                .title(r.getTitle())
-                                .content(r.getContent())
-                                .citizenName(r.getCitizen().getFullName())
-                                .citizenId(r.getCitizen().getCitizenId())
-                                .applicationCode(r.getApplication() != null ? r.getApplication().getApplicationCode()
-                                                : null)
-                                .status(r.getStatus())
-                                .createdAt(r.getCreatedAt())
+                                .id(f.getId())
+                                .type(f.getType())
+                                .title(f.getTitle())
+                                .content(f.getContent())
+                                .citizenName(f.getCitizenName())
+                                .citizenId(f.getCitizenCccd())
+                                .applicationCode(f.getApplication() != null ? f.getApplication().getApplicationCode() : null)
+                                .status(f.getStatus())
+                                .createdAt(f.getCreatedAt())
                                 .replies(replyDtos)
                                 .build();
         }

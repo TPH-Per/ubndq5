@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "appointment", indexes = {
         @Index(name = "idx_appointment_date", columnList = "appointment_date"),
-        @Index(name = "idx_appointment_status", columnList = "status")
+        @Index(name = "idx_appointment_status", columnList = "status"),
+        @Index(name = "idx_appointment_zalo_account", columnList = "zalo_account_id")
 })
 @Getter
 @Setter
@@ -33,6 +34,11 @@ public class Appointment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staff_id")
     private Staff staff;
+
+    // Định danh người đặt lịch — 1 ZaloAccount có nhiều Appointment
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "zalo_account_id", nullable = false)
+    private ZaloAccount zaloAccount;
 
     @Column(name = "appointment_date", nullable = false)
     private LocalDate appointmentDate;

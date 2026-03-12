@@ -122,7 +122,8 @@ import {
   Bell, 
   UserCog,
   Layers,
-  ClipboardList
+  ClipboardList,
+  FileStack
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import EditProfileModal from '@/components/shared/EditProfileModal.vue'
@@ -137,8 +138,9 @@ const sidebarItems = [
   { icon: LayoutDashboard, label: 'Tổng quan', path: '/admin/dashboard' },
   { icon: Users, label: 'Quản lý tài khoản', path: '/admin/accounts' },
   { icon: Building2, label: 'Quản lý quầy', path: '/admin/counters' },
-  { icon: Layers, label: 'Quản lý chuyên môn', path: '/admin/specialties' },
+  { icon: FileStack, label: 'Quản lý hồ sơ', path: '/admin/hoso' },
   { icon: ClipboardList, label: 'Quản lý thủ tục', path: '/admin/procedures' },
+  { icon: Layers, label: 'Quản lý chuyên môn', path: '/admin/specialties' },
   { icon: FileBarChart, label: 'Báo cáo & Góp ý', path: '/admin/reports' },
   { icon: UserCog, label: 'Tài khoản cá nhân', path: '/admin/profile' },
 ]

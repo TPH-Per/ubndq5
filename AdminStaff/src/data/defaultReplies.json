@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "title": "Tiếp nhận & xác nhận",
+    "content": "Kính gửi quý công dân, chúng tôi đã tiếp nhận phản ánh của quý vị và đang tiến hành xem xét, giải quyết. Chúng tôi sẽ phản hồi kết quả trong thời gian sớm nhất. Trân trọng.",
+    "category": "Chào hỏi"
+  },
+  {
+    "id": 2,
+    "title": "Đã giải quyết xong",
+    "content": "Kính gửi quý công dân, vấn đề quý vị phản ánh đã được cơ quan chúng tôi xem xét và giải quyết hoàn tất. Nếu còn thắc mắc, vui lòng liên hệ trực tiếp tại bộ phận Một cửa hoặc gọi đường dây hỗ trợ. Trân trọng.",
+    "category": "Giải quyết"
+  },
+  {
+    "id": 3,
+    "title": "Cần bổ sung hồ sơ",
+    "content": "Kính gửi quý công dân, sau khi xem xét, chúng tôi nhận thấy hồ sơ của quý vị cần bổ sung thêm một số giấy tờ theo quy định. Vui lòng liên hệ trực tiếp cán bộ tiếp nhận để được hướng dẫn chi tiết. Trân trọng.",
+    "category": "Yêu cầu bổ sung"
+  },
+  {
+    "id": 4,
+    "title": "Cảm ơn góp ý",
+    "content": "Trân trọng cảm ơn quý công dân đã dành thời gian ghi nhận và góp ý. Ý kiến của quý vị là nguồn động lực giúp chúng tôi không ngừng nâng cao chất lượng phục vụ. Trân trọng.",
+    "category": "Cảm ơn"
+  },
+  {
+    "id": 5,
+    "title": "Thông báo lịch hẹn trả kết quả",
+    "content": "Kính gửi quý công dân, chúng tôi xin thông báo hồ sơ của quý vị đã có kết quả theo đúng phiếu hẹn đã cấp. Quý vị vui lòng đến đúng thời gian để nhận kết quả và tránh ảnh hưởng đến quyền lợi. Trân trọng.",
+    "category": "Thông báo"
+  },
+  {
+    "id": 6,
+    "title": "Đang chờ xử lý nội bộ",
+    "content": "Kính gửi quý công dân, phản ánh của quý vị hiện đang được chuyển đến bộ phận chuyên môn liên quan để xem xét, giải quyết theo đúng thẩm quyền. Chúng tôi sẽ thông báo kết quả ngay khi có. Trân trọng.",
+    "category": "Xử lý"
+  }
+]

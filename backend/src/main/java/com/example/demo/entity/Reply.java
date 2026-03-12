@@ -18,8 +18,12 @@ public class Reply {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "report_id", nullable = false)
+    @JoinColumn(name = "report_id")
     private Report report;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "feedback_id")
+    private Feedback feedback;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "staff_id", nullable = false)

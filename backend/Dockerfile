@@ -1,34 +1,43 @@
-# Build stage
+# ==============================================================================
+# Dockerfile - Spring Boot Backend
+# Multi-stage build: Maven build → JRE runtime
+# Base: Eclipse Temurin 21 (Java 21 LTS)
+# ==============================================================================
+
+# ─── STAGE 1: BUILD ──────────────────────────────────────────────────────────
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
-# Copy Maven wrapper and pom.xml
-COPY .mvn/ .mvn
+# Cache Maven dependencies (layer caching khi chỉ pom.xml thay đổi)
+COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
+RUN chmod +x mvnw && ./mvnw dependency:go-offline -q
 
-# Download dependencies
-RUN ./mvnw dependency:go-offline
-
-# Copy source code
+# Copy và build source
 COPY src ./src
+RUN ./mvnw clean package -DskipTests -q
 
-# Build application
-RUN ./mvnw clean package -DskipTests
-
-# Runtime stage
-FROM eclipse-temurin:21-jre-alpine
+# ─── STAGE 2: RUNTIME ─────────────────────────────────────────────────────────
+FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app
 
-# Copy JAR from build stage
+# Cài thêm curl để dùng trong healthcheck
+RUN apk add --no-cache curl
+
+# Copy JAR từ build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Expose port
-EXPOSE 8080
+# Port backend đang dùng
+EXPOSE 8081
 
-# Environment variables (will be overridden by docker-compose)
-ENV SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/hanhchinhcong
-ENV SPRING_DATASOURCE_USERNAME=postgres
-ENV SPRING_DATASOURCE_PASSWORD=postgres
+# Environment mặc định (sẽ bị override bởi docker-compose)
+ENV SPRING_PROFILES_ACTIVE=dev \
+    SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/cholon_db \
+    SPRING_DATASOURCE_USERNAME=postgres \
+    SPRING_DATASOURCE_PASSWORD=postgres \
+    JWT_SECRET=LocalDevSecretKeyChangeInProduction \
+    JWT_EXPIRATION=604800000 \
+    JAVA_TOOL_OPTIONS="-Xms256m -Xmx512m -XX:+UseG1GC"
 
-# Run application
+# Run
 ENTRYPOINT ["java", "-jar", "app.jar"]

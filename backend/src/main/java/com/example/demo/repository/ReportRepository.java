@@ -9,8 +9,8 @@ import java.util.List;
 @Repository
 public interface ReportRepository extends JpaRepository<Report, Integer> {
 
-    @Query("SELECT r FROM Report r WHERE r.citizen.citizenId = :citizenId ORDER BY r.createdAt DESC")
-    List<Report> findByCitizenId(String citizenId); // citizenId is now String (CCCD)
+    @Query("SELECT r FROM Report r WHERE r.citizenCccd = :cccd ORDER BY r.createdAt DESC")
+    List<Report> findByCitizenCccd(String cccd);
 
     @Query("SELECT r FROM Report r WHERE r.application.id = :applicationId ORDER BY r.createdAt DESC")
     List<Report> findByApplicationId(Integer applicationId);

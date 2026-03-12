@@ -169,9 +169,9 @@ export interface UpdateUserRequest {
 }
 
 export const userApi = {
-    // Lấy danh sách tất cả users
+    // Lấy danh sách tất cả users (request large page to get all)
     getAll: () =>
-        api.get<ApiResponse<UserData[]>>('/admin/users'),
+        api.get<ApiResponse<any>>('/admin/users', { params: { page: 0, size: 1000 } }),
 
     // Lấy user theo ID
     getById: (id: number) =>
@@ -358,7 +358,7 @@ export interface CreateLoaiThuTucRequest {
     maThuTuc: string;
     tenThuTuc: string;
     moTa?: string;
-    chuyenMonId: number;
+    chuyenMonId?: number;
     thoiGianXuLy?: number;
     giayToYeuCau?: string;
     formSchema?: Record<string, unknown>;
@@ -646,6 +646,42 @@ export const hoSoApi = {
 };
 
 // =============================================
+// ADMIN HOSO API - Admin xem hồ sơ tất cả quầy
+// =============================================
+
+export interface AdminHoSoDashboardData {
+    tongHomNay: number;
+    tongNgayMai: number;
+    tongTatCa: number;
+    ngayFilter: string;
+    perCounter: { quayId: number; tenQuay: string; soLuong: number }[];
+}
+
+export interface AdminHoSoPageResult {
+    content: HoSoData[];
+    totalElements: number;
+    totalPages: number;
+    number: number;
+    size: number;
+}
+
+export const adminHoSoApi = {
+    getDashboard: (date?: string) =>
+        api.get<ApiResponse<AdminHoSoDashboardData>>('/admin/hoso/dashboard', { params: date ? { date } : {} }),
+
+    getList: (params: {
+        date?: string;
+        quayId?: number;
+        trangThai?: number;
+        page?: number;
+        size?: number;
+    }) => api.get<ApiResponse<AdminHoSoPageResult>>('/admin/hoso', { params }),
+
+    getById: (id: number) =>
+        api.get<ApiResponse<HoSoData>>(`/admin/hoso/${id}`),
+};
+
+// =============================================
 // FEEDBACK API - Staff quản lý phản ánh
 // =============================================
 
@@ -673,5 +709,31 @@ export const feedbackApi = {
     getList: (status?: number) => api.get<ApiResponse<Feedback[]>>('/staff/feedbacks', { params: { status } }),
     getDetail: (id: number) => api.get<ApiResponse<Feedback>>(`/staff/feedbacks/${id}`),
     reply: (id: number, content: string) => api.post<ApiResponse<Feedback>>(`/staff/feedbacks/${id}/reply`, { content })
+};
+
+// =============================================
+// STAFF PROCEDURE API - Staff quản lý thủ tục (chỉ thuộc chuyên môn quầy)
+// =============================================
+
+export const staffLoaiThuTucApi = {
+    // Lấy danh sách thủ tục thuộc chuyên môn quầy
+    getMyProcedures: () =>
+        api.get<ApiResponse<LoaiThuTucData[]>>('/staff/procedures'),
+
+    // Lấy chi tiết thủ tục
+    getById: (id: number) =>
+        api.get<ApiResponse<LoaiThuTucData>>(`/staff/procedures/${id}`),
+
+    // Tạo thủ tục mới (tự động gán chuyên môn quầy)
+    create: (data: CreateLoaiThuTucRequest) =>
+        api.post<ApiResponse<LoaiThuTucData>>('/staff/procedures', data),
+
+    // Cập nhật thủ tục (chỉ thuộc chuyên môn quầy)
+    update: (id: number, data: UpdateLoaiThuTucRequest) =>
+        api.put<ApiResponse<LoaiThuTucData>>(`/staff/procedures/${id}`, data),
+
+    // Xóa thủ tục (soft delete)
+    delete: (id: number) =>
+        api.delete<ApiResponse<null>>(`/staff/procedures/${id}`),
 };
 

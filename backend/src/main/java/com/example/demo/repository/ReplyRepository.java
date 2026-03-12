@@ -14,4 +14,7 @@ public interface ReplyRepository extends JpaRepository<Reply, Integer> {
 
     @Query("SELECT r FROM Reply r WHERE r.staff.id = :staffId ORDER BY r.createdAt DESC")
     List<Reply> findByStaffId(Integer staffId);
+
+    @Query("SELECT r FROM Reply r WHERE r.feedback.id = :feedbackId ORDER BY r.createdAt")
+    List<Reply> findByFeedbackId(Integer feedbackId);
 }

@@ -504,8 +504,8 @@ const getStatusClass = (status: number) => {
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '--'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('vi-VN')
+  const d = new Date(dateStr)
+  return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth() + 1).toString().padStart(2,'0')}/${d.getFullYear()}`
 }
 
 const isOverdue = (hanXuLy: string | null) => {

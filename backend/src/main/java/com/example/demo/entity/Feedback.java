@@ -2,11 +2,15 @@ package com.example.demo.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.Map;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+/**
+ * Feedback entity - góp ý từ công dân qua Citizen API / Zalo Mini App
+ * Khác với Report (dùng bởi Staff API)
+ */
 @Entity
 @Table(name = "\"GopYPhanAnh\"")
 @Getter
@@ -16,7 +20,7 @@ import java.util.Map;
 @Builder
 public class Feedback {
 
-    // Type constants (matching DB: 1=Góp ý, 2=Khiếu nại, 3=Khen ngợi)
+    // Type constants
     public static final int TYPE_SUGGESTION = 1; // Góp ý
     public static final int TYPE_COMPLAINT = 2; // Khiếu nại
     public static final int TYPE_COMPLIMENT = 3; // Khen ngợi
@@ -34,17 +38,21 @@ public class Feedback {
     @Column(name = "magopy", unique = true, nullable = false)
     private String feedbackCode;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cccd", referencedColumnName = "citizen_id")
-    private Citizen citizen;
+    // ===== Thông tin công dân (inline) =====
+    @Column(name = "cccd", length = 12)
+    private String citizenCccd;
 
+    @Column(name = "citizen_name", length = 100)
+    private String citizenName;
+
+    // ===== Zalo ID (để gửi thông báo phản hồi) =====
     @Column(name = "zaloid")
     private String zaloId;
 
     @Column(name = "loaigopy", nullable = false)
     private Integer type;
 
-    @Column(name = "tieude", nullable = false)
+    @Column(name = "tieude")
     private String title;
 
     @Column(name = "noidung", columnDefinition = "TEXT")

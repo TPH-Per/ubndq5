@@ -1,9 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, List, FileText, Info, ChevronRight, Activity, X } from 'lucide-react';
+import { Calendar, List, FileText, Info, Activity, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useSimulation } from '../../context/SimulationContext';
-import { MOCK_NEWS } from '../../data/mock';
 import heroLogo from '../../data/citizen_logo_transparent-removebg-preview.png';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -262,34 +261,7 @@ export const CitizenHome = () => {
           />
         </div>
 
-        {/* News Section */}
-        <div>
-          <div className="flex items-center justify-between mb-4 px-1">
-            <h3 className="font-bold text-gray-900 text-lg">Tin tức nổi bật</h3>
-            <span className="text-xs font-semibold text-primary cursor-pointer hover:underline">Xem tất cả</span>
-          </div>
-          <div className="space-y-4">
-            {MOCK_NEWS.map((news, idx) => (
-              <motion.div
-                key={news.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + (idx * 0.1) }}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex gap-4 active:scale-[0.99] transition-transform"
-              >
-                <img src={news.image} alt="" className="h-20 w-20 rounded-xl object-cover flex-shrink-0 bg-gray-100 shadow-sm" />
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  <h4 className="font-bold text-sm leading-tight text-gray-900 mb-1.5 line-clamp-2">{news.title}</h4>
-                  <p className="text-xs text-gray-500 line-clamp-1 mb-2">{news.summary}</p>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                    <span className="bg-gray-100 px-2 py-0.5 rounded-full font-medium">Tin tức</span>
-                    <span>• {news.date}</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+
       </div>
     </div>
   );

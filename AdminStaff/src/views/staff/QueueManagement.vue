@@ -307,11 +307,11 @@
 
           <div class="flex items-center gap-4">
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" v-model="cancelStatus" :value="3" class="text-blue-600" />
+              <input type="radio" v-model="cancelStatus" :value="0" class="text-blue-600" />
               <span>Khách vắng mặt</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" v-model="cancelStatus" :value="4" class="text-blue-600" />
+              <input type="radio" v-model="cancelStatus" :value="2" class="text-blue-600" />
               <span>Hủy vì lý do khác</span>
             </label>
           </div>
@@ -686,7 +686,16 @@ const completeProcessing = async () => {
 }
 
 const handleCancel = async () => {
-  if (!currentProcessing.value || !cancelReason.value.trim()) return
+  if (!currentProcessing.value) return
+  
+  let reason = cancelReason.value.trim()
+  if (!reason && cancelStatus.value === 0) {
+     reason = 'Khách vắng mặt / Không đến khi gọi số'
+  }
+  if (!reason) {
+     toast.error('Vui lòng nhập lý do hủy')
+     return
+  }
   
   actionLoading.value = true
   error.value = ''
@@ -694,7 +703,7 @@ const handleCancel = async () => {
   try {
     const response = await queueApi.cancel(
       currentProcessing.value.id,
-      cancelReason.value.trim(),
+      reason,
       cancelStatus.value
     )
     if (response.data.success) {

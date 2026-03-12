@@ -245,7 +245,8 @@ async function fetchUsers() {
   try {
     const response = await userApi.getAll();
     if (response.data.success) {
-      users.value = response.data.data;
+      const data = response.data.data as any;
+      users.value = Array.isArray(data) ? data : (data?.content ?? []);
     } else {
       error.value = response.data.message;
       toast.error(error.value || 'Lỗi tải dữ liệu');

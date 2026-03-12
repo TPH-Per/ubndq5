@@ -2,6 +2,8 @@ package com.example.demo.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
@@ -30,6 +32,7 @@ public class Procedure {
     @Builder.Default
     private Integer processingDays = 15;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "form_schema", columnDefinition = "jsonb")
     private String formSchema;
 
