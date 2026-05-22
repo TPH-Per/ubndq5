@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { format, isSameDay, addDays } from 'date-fns';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { format } from 'date-fns';
 import * as api from '../services/citizenApi';
-import mockZaloData from '../data/mockZaloAccount.json';
+import { loadZaloProfile } from '../lib/zalo';
 
-// Types
 export interface Appointment {
   id: string;
   queueNumber: string;
@@ -18,131 +17,164 @@ export interface Appointment {
   zaloLinked?: boolean;
 }
 
-
-
-export interface FileRecord {
-  id: string;
-  fileCode: string;
-  citizenName: string;
-  procedure: string;
-  startTime: string;
-  status: 'processing' | 'completed' | 'need_docs' | 'rejected';
-  staff: string;
-  deadline: string;
-}
-
 interface SimulationContextType {
-  waitingList: Appointment[];
-  activeFiles: FileRecord[];
-  currentServing: Appointment | null;
-  completedList: Appointment[];
   myAppointments: Appointment[];
   citizenId: string;
   citizenName: string;
+  citizenPhone: string;
   zaloId: string;
+  zaloName: string;
+  zaloAvatar?: string;
   setCitizenId: (id: string) => void;
   setCitizenName: (name: string) => void;
-  stats: {
-    waiting: number;
-    completed: number;
-    avgWait: number;
-    processing: number;
-  };
-  bookAppointment: (data: any) => Promise<api.AppointmentResponse | null>;
-  callNext: () => void;
-  completeCurrent: () => void;
+  setCitizenPhone: (phone: string) => void;
+  bookAppointment: (data: {
+    procedureId: number;
+    date: Date;
+    time: string;
+    phone?: string;
+    email?: string;
+    notes?: string;
+  }) => Promise<api.AppointmentResponse | null>;
   cancelAppointment: (id: string, reason?: string) => Promise<void>;
-  approveToProcessing: (id: string) => void;
-  updateFile: (id: string, updates: Partial<FileRecord>) => void;
-  getQueueDataByDate: (date: Date) => Appointment[];
   refreshAppointments: () => Promise<void>;
   isLoading: boolean;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
-// Default citizen for demo (from mock Zalo data)
-const DEFAULT_ZALO_ID = mockZaloData.zaloUser.id;
-const DEFAULT_ZALO_NAME = mockZaloData.zaloUser.name;
-const DEFAULT_CITIZEN_ID = mockZaloData.citizen.citizenId;
-const DEFAULT_CITIZEN_NAME = mockZaloData.citizen.fullName;
-
-export const SimulationProvider = ({ children }: { children: React.ReactNode }) => {
-  const [waitingList, setWaitingList] = useState<Appointment[]>([]);
-  const [activeFiles, setActiveFiles] = useState<FileRecord[]>([]);
-  const [currentServing, setCurrentServing] = useState<Appointment | null>(null);
-  const [completedList, setCompletedList] = useState<Appointment[]>([]);
-  const [myAppointments, setMyAppointments] = useState<Appointment[]>([]);
-  const [historyCache, setHistoryCache] = useState<Record<string, Appointment[]>>({});
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Citizen identity (linked to Zalo account)
-  const [citizenId, setCitizenId] = useState<string>(DEFAULT_CITIZEN_ID);
-  const [citizenName, setCitizenName] = useState<string>(DEFAULT_CITIZEN_NAME);
-  const [zaloId] = useState<string>(DEFAULT_ZALO_ID);
-  const [zaloName] = useState<string>(DEFAULT_ZALO_NAME);
-
-  // useEffect dep: zaloId (không dùng citizenId làm key nữa)
-  const mapStatus = (apiStatus: string): Appointment['status'] => {
-    const statusMap: Record<string, Appointment['status']> = {
-      // Vietnamese labels
-      'CHỜ XỬ LÝ': 'waiting',
-      'CHỜ TIẾP': 'waiting',
-      'ĐANG XỬ LÝ': 'serving',
-      'HOÀN THÀNH': 'completed',
-      'ĐÃ HỦY': 'cancelled',
-      'SẮP TỚI HẠN': 'upcoming',
-      // English labels from backend
-      'PENDING': 'scheduled',
-      'IN_QUEUE': 'waiting',
-      'PROCESSING': 'serving',
-      'COMPLETED': 'completed',
-      'CANCELLED': 'cancelled',
-      'RECEIVED': 'completed',
-      'SUPPLEMENT': 'supplement',
-    };
-    return statusMap[apiStatus] || 'waiting';
+const mapStatus = (apiStatus: string): Appointment['status'] => {
+  const statusMap: Record<string, Appointment['status']> = {
+    CHO_XU_LY: 'waiting',
+    'CHỜ XỬ LÝ': 'waiting',
+    'CHỜ TIẾP': 'waiting',
+    'ĐANG XỬ LÝ': 'serving',
+    'HOÀN THÀNH': 'completed',
+    'ĐÃ HỦY': 'cancelled',
+    'SẮP TỚI HẠN': 'upcoming',
+    PENDING: 'scheduled',
+    IN_QUEUE: 'waiting',
+    PROCESSING: 'serving',
+    COMPLETED: 'completed',
+    CANCELLED: 'cancelled',
+    RECEIVED: 'completed',
+    SUPPLEMENT: 'supplement',
   };
 
-  // Fetch appointments on mount and when zaloId changes
+  return statusMap[apiStatus] || 'waiting';
+};
+
+export const SimulationProvider = ({ children }: { children: React.ReactNode }) => {
+  const [myAppointments, setMyAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [citizenId, setCitizenId] = useState('');
+  const [citizenName, setCitizenName] = useState('');
+  const [citizenPhone, setCitizenPhone] = useState('');
+  const [zaloId, setZaloId] = useState('');
+  const [zaloName, setZaloName] = useState('');
+  const [zaloAvatar, setZaloAvatar] = useState<string | undefined>(undefined);
+
   const refreshAppointments = useCallback(async () => {
-    if (!zaloId) return;
+    if (!zaloId) {
+      setMyAppointments([]);
+      return;
+    }
 
     setIsLoading(true);
     try {
       const appointments = await api.getMyAppointments(zaloId);
-
-      const mapped: Appointment[] = appointments.map(app => ({
+      const mapped: Appointment[] = appointments.map((app) => ({
         id: app.id.toString(),
         queueNumber: app.queueDisplay || '',
-        citizenName: app.citizenName || citizenName,
+        citizenName: app.citizenName || citizenName || zaloName || 'Công dân',
         procedure: app.procedureName,
         time: app.appointmentTime || '',
         status: mapStatus(app.status),
         date: app.appointmentDate || app.createdAt?.split('T')[0] || '',
+        counter: app.counter || undefined,
         code: app.code,
         zaloLinked: app.zaloLinked || false,
       }));
 
       setMyAppointments(mapped);
-
-      // Update waiting list for today
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const todayAppts = mapped.filter(a => a.date === today && a.status === 'waiting');
-      setWaitingList(todayAppts);
-
     } catch (error) {
       console.error('Failed to fetch appointments:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [citizenId, citizenName]);
+  }, [citizenName, zaloId, zaloName]);
 
   useEffect(() => {
-    refreshAppointments();
+    let cancelled = false;
+
+    const syncZaloIdentity = async () => {
+      const profile = await loadZaloProfile();
+      if (!profile || cancelled) {
+        return;
+      }
+
+      setZaloId(profile.id);
+      setZaloAvatar(profile.avatar);
+
+      if (profile.name) {
+        setZaloName(profile.name);
+        setCitizenName((current) => current || profile.name || '');
+      }
+
+      try {
+        const syncedProfile = await api.syncZaloProfile({
+          zaloId: profile.id,
+          zaloName: profile.name,
+          avatar: profile.avatar,
+          oaUserId: profile.oaUserId,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (syncedProfile.zaloName) {
+          setZaloName(syncedProfile.zaloName);
+          setCitizenName((current) => current || syncedProfile.zaloName || '');
+        }
+
+        if (syncedProfile.avatar) {
+          setZaloAvatar(syncedProfile.avatar);
+        }
+
+        if (syncedProfile.phoneNumber) {
+          setCitizenPhone(syncedProfile.phoneNumber);
+        }
+      } catch (error) {
+        console.warn('Unable to sync Zalo profile with backend', error);
+      }
+    };
+
+    void syncZaloIdentity();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    void refreshAppointments();
   }, [refreshAppointments]);
 
-  const bookAppointment = async (data: any): Promise<api.AppointmentResponse | null> => {
+  const bookAppointment = async (data: {
+    procedureId: number;
+    date: Date;
+    time: string;
+    phone?: string;
+    email?: string;
+    notes?: string;
+  }): Promise<api.AppointmentResponse | null> => {
+    if (!zaloId) {
+      console.error('Booking requires an authenticated Zalo account');
+      return null;
+    }
+
     try {
       setIsLoading(true);
 
@@ -150,31 +182,34 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
         procedureId: data.procedureId,
         appointmentDate: format(data.date, 'yyyy-MM-dd'),
         appointmentTime: data.time,
-        citizenName: citizenName,
+        citizenName: citizenName || zaloName || 'Công dân Zalo',
         citizenCccd: citizenId,
-        citizenPhone: data.phone || '0901234567',
+        citizenPhone: data.phone || citizenPhone,
         citizenEmail: data.email,
-        zaloId: zaloId,
-        zaloName: zaloName,
+        zaloId,
+        zaloName: zaloName || citizenName,
+        notes: data.notes,
       };
 
       const result = await api.createAppointment(request);
 
-      // Add to local state immediately
-      const newAppt: Appointment = {
+      const newAppointment: Appointment = {
         id: result.id.toString(),
         queueNumber: result.queueDisplay,
-        citizenName: citizenName,
+        citizenName: citizenName || zaloName || 'Công dân Zalo',
         procedure: result.procedureName,
         time: result.appointmentTime,
         status: 'scheduled',
         date: result.appointmentDate,
         code: result.code,
+        zaloLinked: result.zaloLinked || true,
       };
 
-      setMyAppointments(prev => [newAppt, ...prev]);
-      setWaitingList(prev => [...prev, newAppt]);
+      if (data.phone) {
+        setCitizenPhone(data.phone);
+      }
 
+      setMyAppointments((prev) => [newAppointment, ...prev]);
       return result;
     } catch (error) {
       console.error('Failed to book appointment:', error);
@@ -185,14 +220,21 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
   };
 
   const cancelAppointment = async (id: string, reason: string = 'Cancelled by user') => {
+    if (!zaloId) {
+      throw new Error('Cần đăng nhập Zalo để hủy lịch');
+    }
+
     try {
       setIsLoading(true);
-      await api.cancelAppointment(parseInt(id), zaloId);
+      await api.cancelAppointment(parseInt(id, 10), zaloId);
 
-      setWaitingList(prev => prev.filter(a => a.id !== id));
-      setMyAppointments(prev => prev.map(a =>
-        a.id === id ? { ...a, status: 'cancelled' as const, cancelReason: reason } : a
-      ));
+      setMyAppointments((prev) =>
+        prev.map((appointment) =>
+          appointment.id === id
+            ? { ...appointment, status: 'cancelled' as const, cancelReason: reason }
+            : appointment,
+        ),
+      );
     } catch (error) {
       console.error('Failed to cancel appointment:', error);
       throw error;
@@ -201,127 +243,25 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
     }
   };
 
-  // Local-only functions for simulation
-  const callNext = () => {
-    if (waitingList.length === 0) return;
-    if (currentServing) {
-      setCompletedList(prev => [currentServing, ...prev]);
-    }
-    const nextPerson = { ...waitingList[0], status: 'serving' as const };
-    setCurrentServing(nextPerson);
-    setWaitingList(prev => prev.slice(1));
-    setMyAppointments(prev => prev.map(appt =>
-      appt.id === nextPerson.id ? { ...appt, status: 'serving' } : appt
-    ));
-  };
-
-  const completeCurrent = () => {
-    if (!currentServing) return;
-    const completed = { ...currentServing, status: 'completed' as const };
-    setCompletedList(prev => [completed, ...prev]);
-    setCurrentServing(null);
-    setMyAppointments(prev => prev.map(appt =>
-      appt.id === completed.id ? { ...appt, status: 'completed' } : appt
-    ));
-  };
-
-  const approveToProcessing = (id: string) => {
-    const appt = waitingList.find(a => a.id === id);
-    if (!appt) return;
-    setWaitingList(prev => prev.filter(a => a.id !== id));
-    const newFile: FileRecord = {
-      id: `F-${Math.random().toString(36).substr(2, 5)}`,
-      fileCode: `HS${new Date().getFullYear()}${Math.floor(Math.random() * 10000)}`,
-      citizenName: appt.citizenName,
-      procedure: appt.procedure,
-      startTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'processing',
-      staff: 'Admin Staff',
-      deadline: format(addDays(new Date(), 3), 'yyyy-MM-dd')
-    };
-    setActiveFiles(prev => [newFile, ...prev]);
-    setMyAppointments(prev => prev.map(a =>
-      a.id === id ? { ...a, status: 'processing' } : a
-    ));
-  };
-
-  const updateFile = (id: string, updates: Partial<FileRecord>) => {
-    setActiveFiles(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
-  };
-
-  const generateMockDataForDate = (date: Date): Appointment[] => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const isPast = date < new Date() && !isSameDay(date, new Date());
-    const count = Math.floor(Math.random() * 10) + 5;
-    const records: Appointment[] = [];
-    for (let i = 0; i < count; i++) {
-      const statusOptions = isPast
-        ? ['completed', 'completed', 'cancelled', 'processing']
-        : ['upcoming'];
-      const status = statusOptions[Math.floor(Math.random() * statusOptions.length)] as any;
-      records.push({
-        id: `${dateStr}-${i}`,
-        queueNumber: `A${(i + 1).toString().padStart(3, '0')}`,
-        citizenName: `Citizen ${dateStr.slice(5)} - ${i + 1}`,
-        procedure: ['CCCD', 'Khai sinh', 'Đất đai', 'Đăng ký KD'][Math.floor(Math.random() * 4)],
-        time: `${8 + Math.floor(i / 2)}:${i % 2 === 0 ? '00' : '30'}`,
-        status: status,
-        date: dateStr,
-        cancelReason: status === 'cancelled' ? 'Khách không đến' : undefined
-      });
-    }
-    return records;
-  };
-
-  const getQueueDataByDate = useCallback((date: Date) => {
-    const today = new Date();
-    if (isSameDay(date, today)) {
-      const liveData = [
-        ...completedList,
-        ...(currentServing ? [currentServing] : []),
-        ...waitingList
-      ];
-      return liveData.sort((a, b) => a.queueNumber.localeCompare(b.queueNumber));
-    }
-    const dateKey = format(date, 'yyyy-MM-dd');
-    if (historyCache[dateKey]) {
-      return historyCache[dateKey];
-    }
-    const newData = generateMockDataForDate(date);
-    setHistoryCache(prev => ({ ...prev, [dateKey]: newData }));
-    return newData;
-  }, [waitingList, currentServing, completedList, historyCache]);
-
-  const stats = {
-    waiting: waitingList.length,
-    completed: completedList.length + 28,
-    avgWait: 18,
-    processing: activeFiles.length
-  };
-
   return (
-    <SimulationContext.Provider value={{
-      waitingList,
-      activeFiles,
-      currentServing,
-      completedList,
-      myAppointments,
-      citizenId,
-      citizenName,
-      zaloId,
-      setCitizenId,
-      setCitizenName,
-      stats,
-      bookAppointment,
-      callNext,
-      completeCurrent,
-      cancelAppointment,
-      approveToProcessing,
-      updateFile,
-      getQueueDataByDate,
-      refreshAppointments,
-      isLoading,
-    }}>
+    <SimulationContext.Provider
+      value={{
+        myAppointments,
+        citizenId,
+        citizenName,
+        citizenPhone,
+        zaloId,
+        zaloName,
+        zaloAvatar,
+        setCitizenId,
+        setCitizenName,
+        setCitizenPhone,
+        bookAppointment,
+        cancelAppointment,
+        refreshAppointments,
+        isLoading,
+      }}
+    >
       {children}
     </SimulationContext.Provider>
   );
@@ -329,6 +269,9 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
 
 export const useSimulation = () => {
   const context = useContext(SimulationContext);
-  if (!context) throw new Error('useSimulation must be used within a SimulationProvider');
+  if (!context) {
+    throw new Error('useSimulation must be used within a SimulationProvider');
+  }
+
   return context;
 };

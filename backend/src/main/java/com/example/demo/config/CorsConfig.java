@@ -1,5 +1,6 @@
 package com.example.demo.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
@@ -9,8 +10,11 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+
 
 /**
  * CORS Configuration
@@ -23,6 +27,14 @@ import java.util.List;
  */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
+
+        private static final List<String> EXPLICIT_HEADERS = Arrays.asList(
+                "Authorization", "Content-Type", "Accept", "Origin",
+                "X-Requested-With", "Cache-Control", "ngrok-skip-browser-warning"
+        );
+
+        @Value("${app.cors.allowed-origins}")
+        private String allowedOriginsRaw;
 
         /**
          * Rate limiter: 30 req/min per IP for citizen endpoints
@@ -38,17 +50,33 @@ public class CorsConfig implements WebMvcConfigurer {
          */
         @Override
         public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**") // Áp dụng cho tất cả /api/*
-                                .allowedOriginPatterns(
-                                                "http://localhost:*", // All localhost ports
-                                                "http://127.0.0.1:*", // Alternative localhost
-                                                "https://*.netlify.app", // Netlify deployments
-                                                "https://*.vercel.app" // Vercel deployments
-                                )
+                String[] origins = parseAllowedOrigins();
+                String[] lanOrigins = resolveLanOrigins(origins);
+
+                String[] explicitHeaders = EXPLICIT_HEADERS.toArray(new String[0]);
+
+                // Citizen APIs: cho phép LAN + public web origins (Vercel + Zalo WebView)
+                registry.addMapping("/api/citizen/**")
+                                .allowedOrigins(origins)
                                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-                                .allowedHeaders("*") // Cho phép tất cả headers
-                                .allowCredentials(true) // Cho phép gửi cookies/auth headers
-                                .maxAge(3600); // Cache preflight request 1 giờ
+                                .allowedHeaders(explicitHeaders)
+                                .allowCredentials(true)
+                                .maxAge(3600);
+
+                // Staff/Admin APIs: chỉ cho LAN origins
+                registry.addMapping("/api/staff/**")
+                                .allowedOrigins(lanOrigins)
+                                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                                .allowedHeaders(explicitHeaders)
+                                .allowCredentials(true)
+                                .maxAge(3600);
+
+                registry.addMapping("/api/admin/**")
+                                .allowedOrigins(lanOrigins)
+                                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                                .allowedHeaders(explicitHeaders)
+                                .allowCredentials(true)
+                                .maxAge(3600);
         }
 
         /**
@@ -58,37 +86,69 @@ public class CorsConfig implements WebMvcConfigurer {
          */
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
-                CorsConfiguration configuration = new CorsConfiguration();
+                String[] origins = parseAllowedOrigins();
+                String[] lanOrigins = resolveLanOrigins(origins);
 
-                // Origins được phép (sử dụng pattern để hỗ trợ nhiều ports)
-                configuration.setAllowedOriginPatterns(Arrays.asList(
-                                "http://localhost:*",
-                                "http://127.0.0.1:*",
-                                "https://*.netlify.app",
-                                "https://*.vercel.app"));
+                CorsConfiguration citizenConfig = buildCorsConfiguration(origins);
+                CorsConfiguration staffConfig = buildCorsConfiguration(lanOrigins);
+                CorsConfiguration adminConfig = buildCorsConfiguration(lanOrigins);
 
-                // HTTP methods được phép
-                configuration.setAllowedMethods(Arrays.asList(
-                                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-
-                // Headers được phép
-                configuration.setAllowedHeaders(List.of("*"));
-
-                // Cho phép gửi credentials (Authorization header, cookies)
-                configuration.setAllowCredentials(true);
-
-                // Headers mà frontend được đọc từ response
-                configuration.setExposedHeaders(Arrays.asList(
-                                "Authorization",
-                                "Content-Type"));
-
-                // Cache preflight request
-                configuration.setMaxAge(3600L);
-
-                // Áp dụng cho tất cả paths
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-                source.registerCorsConfiguration("/**", configuration);
+                source.registerCorsConfiguration("/api/citizen/**", citizenConfig);
+                source.registerCorsConfiguration("/api/staff/**", staffConfig);
+                source.registerCorsConfiguration("/api/admin/**", adminConfig);
 
                 return source;
         }
+
+        private CorsConfiguration buildCorsConfiguration(String[] allowedOrigins) {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
+                configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+                // Must NOT use "*" when allowCredentials=true (CORS spec violation → TypeError in browsers/Zalo)
+                configuration.setAllowedHeaders(Arrays.asList(
+                        "Authorization", "Content-Type", "Accept", "Origin",
+                        "X-Requested-With", "Cache-Control", "ngrok-skip-browser-warning"
+                ));
+                configuration.setAllowCredentials(true);
+                configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+                configuration.setMaxAge(3600L);
+                return configuration;
+        }
+
+        private String[] parseAllowedOrigins() {
+                return Arrays.stream(allowedOriginsRaw.split(","))
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty())
+                                .toArray(String[]::new);
+        }
+
+        private String[] resolveLanOrigins(String[] origins) {
+                List<String> lanOrigins = Arrays.stream(origins)
+                                .filter(this::isLanOrigin)
+                                .collect(Collectors.toCollection(ArrayList::new));
+
+                if (lanOrigins.isEmpty()) {
+                        lanOrigins.add("http://localhost:5173");
+                        lanOrigins.add("http://127.0.0.1:5173");
+                        lanOrigins.add("http://localhost:5174");
+                        lanOrigins.add("http://127.0.0.1:5174");
+                }
+
+                return lanOrigins.toArray(String[]::new);
+        }
+
+        private boolean isLanOrigin(String origin) {
+                return origin.startsWith("http://10.")
+                                || origin.startsWith("https://10.")
+                                || origin.startsWith("http://192.168.")
+                                || origin.startsWith("https://192.168.")
+                                || origin.matches("^https?://172\\.(1[6-9]|2\\d|3[0-1])\\..*")
+                                || origin.startsWith("http://localhost")
+                                || origin.startsWith("https://localhost")
+                                || origin.startsWith("http://127.0.0.1")
+                                || origin.startsWith("https://127.0.0.1");
+        }
+
 }
+

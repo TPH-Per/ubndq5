@@ -11,8 +11,8 @@ export const MyAppointments = () => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed' | 'cancelled'>('upcoming');
 
   React.useEffect(() => {
-    refreshAppointments();
-  }, []);
+    void refreshAppointments();
+  }, [refreshAppointments]);
 
   const filteredAppointments = myAppointments.filter(apt => {
     if (activeTab === 'upcoming') return ['upcoming', 'scheduled', 'waiting', 'ready', 'serving', 'supplement'].includes(apt.status);

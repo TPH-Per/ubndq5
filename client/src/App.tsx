@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { SimulationProvider } from './context/SimulationContext';
 import { CitizenLayout } from './layouts/CitizenLayout';
+import { getBasePath } from './lib/zma';
 import { Landing } from './pages/Landing';
 import { CitizenHome } from './pages/citizen/Home';
 import { BookingFlow } from './pages/citizen/BookingFlow';
@@ -13,7 +14,7 @@ import { Feedback } from './pages/citizen/Feedback';
 function App() {
   return (
     <SimulationProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={getBasePath()}>
         <Routes>
           <Route path="/" element={<Navigate to="/citizen" replace />} />
 

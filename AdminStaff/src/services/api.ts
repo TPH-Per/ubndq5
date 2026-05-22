@@ -9,9 +9,11 @@ import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'ax
  * - Response interceptor: Xử lý lỗi chung
  */
 
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+
 // Tạo axios instance với cấu hình mặc định
 const api: AxiosInstance = axios.create({
-    baseURL: 'http://localhost:8081/api',  // URL của Spring Boot backend
+    baseURL: API_BASE_URL,
     timeout: 10000,                         // Timeout 10 giây
     headers: {
         'Content-Type': 'application/json',
@@ -736,4 +738,3 @@ export const staffLoaiThuTucApi = {
     delete: (id: number) =>
         api.delete<ApiResponse<null>>(`/staff/procedures/${id}`),
 };
-

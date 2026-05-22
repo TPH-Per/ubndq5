@@ -1,27 +1,47 @@
-// Citizen API Service - Connect to Backend at port 8081
-// In development, Vite proxy forwards /api/* to localhost:8081
-// In production, use the full backend URL
+// Citizen API Service
+// Use VITE_API_BASE_URL in production build, fallback to Vite proxy in development.
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/citizen';
 
-const API_BASE_URL = import.meta.env.PROD
-    ? 'http://localhost:8081/api/citizen'  // Production: direct to backend
-    : '/api/citizen';                       // Development: use Vite proxy
+interface ApiEnvelope<T> {
+    success: boolean;
+    code?: string;
+    message?: string;
+    data: T;
+}
 
-// Generic fetch wrapper with error handling
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+export async function safeFetch<T>(url: string, options?: RequestInit): Promise<ApiEnvelope<T>> {
+    const response = await fetch(url, {
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true',
             ...options?.headers,
         },
         ...options,
     });
 
-    const data = await response.json();
-
-    if (!response.ok || data.success === false) {
-        throw new Error(data.message || 'API request failed');
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+        throw new Error(`API error ${response.status}: unexpected response format`);
     }
 
+    let data: ApiEnvelope<T>;
+    try {
+        data = await response.json();
+    } catch {
+        throw new Error(`API error ${response.status}: invalid JSON response`);
+    }
+
+    if (!response.ok || data.success === false) {
+        throw new Error(data.message ?? data.code ?? `API request failed (${response.status})`);
+    }
+
+    return data;
+}
+
+// Generic fetch wrapper with error handling
+async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    const data = await safeFetch<T>(`${API_BASE_URL}${endpoint}`, options);
     return data.data;
 }
 
@@ -77,28 +97,37 @@ export interface AppointmentResponse {
     zaloLinked?: boolean;
 }
 
-export interface ApplicationDetail {
+export interface ApplicationSummary {
     id: number;
     code: string;
     procedureName: string;
     status: string;
-    queueDisplay: string;
+    queueDisplay?: string | null;
     createdAt: string;
     appointmentDate?: string;
     appointmentTime?: string;
-    citizenName: string;
-    citizenId: string;
+    citizenName?: string;
+    citizenCccd?: string;
+    counter?: string | null;
     zaloLinked?: boolean;
 }
 
 export interface ApplicationHistory {
     action: string;
-    phaseFrom: string | null;
-    phaseTo: string;
-    timestamp: string;
-    staff: string | null;
-    counter: string | null;
+    statusFrom: string | null;
+    statusTo: string;
+    createdAt: string;
+    staffName: string | null;
     content: string | null;
+}
+
+export interface ApplicationDetail extends ApplicationSummary {
+    procedureCode?: string;
+    statusCode?: number;
+    deadline?: string | null;
+    phone?: string | null;
+    requiredDocuments?: string[];
+    description?: string | null;
 }
 
 export interface QueueStatus {
@@ -181,8 +210,8 @@ export async function createAppointment(data: CreateAppointmentRequest): Promise
  * Get citizen's appointments by Zalo account
  * Maps to: POST /api/citizen/appointments/search
  */
-export async function getMyAppointments(zaloId: string, status?: string): Promise<ApplicationDetail[]> {
-    return fetchAPI<ApplicationDetail[]>('/appointments/search', {
+export async function getMyAppointments(zaloId: string, status?: string): Promise<ApplicationSummary[]> {
+    return fetchAPI<ApplicationSummary[]>('/appointments/search', {
         method: 'POST',
         body: JSON.stringify({ zaloId, status }),
     });
@@ -220,6 +249,24 @@ export interface AppointmentDetail {
     requiredDocuments: string[];
 }
 
+export interface ZaloProfileSyncRequest {
+    zaloId: string;
+    zaloName?: string;
+    avatar?: string;
+    oaUserId?: string;
+    phoneNumber?: string;
+}
+
+export interface ZaloProfileSyncResponse {
+    zaloId: string;
+    zaloName?: string;
+    avatar?: string;
+    oaUserId?: string;
+    phoneNumber?: string;
+    isActive: boolean;
+    lastSyncedAt?: string;
+}
+
 /**
  * Get appointment detail — authenticated by zaloId
  * Maps to: POST /api/citizen/appointments/{id}/view
@@ -235,8 +282,8 @@ export async function getAppointmentDetail(id: number, zaloId: string): Promise<
  * Get citizen's applications (hồ sơ) by Zalo account
  * Maps to: POST /api/citizen/applications/search
  */
-export async function getMyApplications(zaloId: string, status?: string): Promise<ApplicationDetail[]> {
-    return fetchAPI<ApplicationDetail[]>('/applications/search', {
+export async function getMyApplications(zaloId: string, status?: string): Promise<ApplicationSummary[]> {
+    return fetchAPI<ApplicationSummary[]>('/applications/search', {
         method: 'POST',
         body: JSON.stringify({ zaloId, status }),
     });
@@ -292,5 +339,12 @@ export async function getMyFeedbacks(cccd: string, zaloId?: string): Promise<Fee
     return fetchAPI<Feedback[]>('/reports/search', {
         method: 'POST',
         body: JSON.stringify({ cccd, zaloId }),
+    });
+}
+
+export async function syncZaloProfile(data: ZaloProfileSyncRequest): Promise<ZaloProfileSyncResponse> {
+    return fetchAPI<ZaloProfileSyncResponse>('/zalo/profile/sync', {
+        method: 'POST',
+        body: JSON.stringify(data),
     });
 }

@@ -31,8 +31,9 @@ public class CitizenAppointmentService {
     private final ApplicationHistoryRepository applicationHistoryRepository;
     private final AppointmentRepository appointmentRepository;
     private final ProcedureRepository procedureRepository;
-    private final ZaloAccountRepository zaloAccountRepository;
     private final AppointmentBookingService appointmentBookingService;
+    private final ZaloAccountService zaloAccountService;
+    private final ZaloZnsService zaloZnsService;
 
     // ======================== BOOK ========================
 
@@ -63,18 +64,20 @@ public class CitizenAppointmentService {
         // Atomic slot reservation via PostgreSQL advisory lock
         appointmentBookingService.acquireSlotLock(appointmentDate, appointmentTime);
 
-        // Resolve or create Zalo account
-        ZaloAccount zaloAccount = zaloAccountRepository.findByZaloId(req.getZaloId())
-                .orElseGet(() -> zaloAccountRepository.save(
-                        ZaloAccount.builder()
-                                .zaloId(req.getZaloId())
-                                .zaloName(req.getZaloName())
-                                .isActive(true)
-                                .build()));
-        if (req.getZaloName() != null && !req.getZaloName().equals(zaloAccount.getZaloName())) {
-            zaloAccount.setZaloName(req.getZaloName());
-            zaloAccountRepository.save(zaloAccount);
-        }
+        ZaloAccount zaloAccount = zaloAccountService.syncProfile(
+                req.getZaloId(),
+                req.getZaloName(),
+                null,
+                null,
+                req.getCitizenPhone());
+
+        String resolvedCitizenName = hasText(req.getCitizenName())
+                ? req.getCitizenName().trim()
+                : (hasText(zaloAccount.getZaloName()) ? zaloAccount.getZaloName() : "Công dân Zalo");
+
+        String resolvedCitizenPhone = hasText(req.getCitizenPhone())
+                ? req.getCitizenPhone().trim()
+                : zaloAccount.getPhoneNumber();
 
         int queueNumber = applicationRepository.getNextQueueNumber();
         String prefix = procedure.getProcedureCode().substring(0, Math.min(2, procedure.getProcedureCode().length()));
@@ -84,8 +87,8 @@ public class CitizenAppointmentService {
                         "HS-" + LocalDate.now().toString().replace("-", "") + "-" + String.format("%03d", queueNumber))
                 .procedure(procedure)
                 .citizenCccd(req.getCitizenCccd())
-                .citizenName(req.getCitizenName())
-                .citizenPhone(req.getCitizenPhone())
+                .citizenName(resolvedCitizenName)
+                .citizenPhone(resolvedCitizenPhone)
                 .citizenEmail(req.getCitizenEmail())
                 .zaloAccount(zaloAccount)
                 .currentPhase(Application.PHASE_PENDING)
@@ -126,6 +129,8 @@ public class CitizenAppointmentService {
         result.put("queueDisplay", app.getQueueDisplay());
         result.put("status", "SCHEDULED");
         result.put("zaloLinked", true);
+
+        zaloZnsService.sendAppointmentCreated(app, appointmentDate.toString(), appointmentTime.toString());
         return result;
     }
 
@@ -157,11 +162,16 @@ public class CitizenAppointmentService {
             map.put("status", CitizenHelperUtils.getStatusName(app.getCurrentPhase()));
             map.put("queueDisplay", app.getQueueDisplay());
             map.put("createdAt", app.getCreatedAt());
+            map.put("citizenName", app.getCitizenName());
+            map.put("zaloLinked", app.getZaloAccount() != null);
 
             List<ApplicationHistory> histories = applicationHistoryRepository.findLatestAppointmentHistory(app.getId());
             if (!histories.isEmpty()) {
                 map.put("appointmentDate", histories.get(0).getAppointmentDate());
                 map.put("appointmentTime", histories.get(0).getExpectedTime());
+                map.put("counter", histories.get(0).getCounter() != null
+                        ? histories.get(0).getCounter().getCounterName()
+                        : null);
             }
             return map;
         }).collect(Collectors.toList());
@@ -215,6 +225,10 @@ public class CitizenAppointmentService {
                 .content("Công dân tự hủy lịch hẹn")
                 .createdAt(LocalDateTime.now())
                 .build());
+
+        String appointmentDate = activeAppointments.isEmpty() ? null : activeAppointments.get(0).getAppointmentDate().toString();
+        String appointmentTime = activeAppointments.isEmpty() ? null : activeAppointments.get(0).getAppointmentTime().toString();
+        zaloZnsService.sendAppointmentCancelled(app, appointmentDate, appointmentTime);
     }
 
     // ======================== VIEW ========================
@@ -254,6 +268,7 @@ public class CitizenAppointmentService {
         result.put("deadline", app.getDeadline());
         result.put("peopleAhead", queuePosition);
         result.put("estimatedWaitMinutes", queuePosition * 15);
+        result.put("zaloLinked", app.getZaloAccount() != null);
 
         Procedure proc = app.getProcedure();
         result.put("description", proc != null ? proc.getDescription() : null);
@@ -270,7 +285,18 @@ public class CitizenAppointmentService {
         if (!histories.isEmpty()) {
             result.put("appointmentDate", histories.get(0).getAppointmentDate());
             result.put("appointmentTime", histories.get(0).getExpectedTime());
+            result.put("counter", histories.get(0).getCounter() != null
+                    ? histories.get(0).getCounter().getCounterName()
+                    : null);
         }
+
+        List<Application> processing = applicationHistoryRepository
+                .findApplicationsByAppointmentDateAndPhase(LocalDate.now(), Application.PHASE_PROCESSING);
+        result.put("currentServing", processing.isEmpty() ? null : processing.get(0).getQueueDisplay());
         return result;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

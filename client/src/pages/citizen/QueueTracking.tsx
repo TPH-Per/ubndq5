@@ -19,7 +19,11 @@ export const QueueTracking = () => {
 
   useEffect(() => {
     const fetchAppointment = async () => {
-      if (!id || !zaloId) return;
+      if (!id || !zaloId) {
+        setLoading(false);
+        setError('Không tìm thấy phiên Zalo để tra cứu lịch hẹn.');
+        return;
+      }
 
       try {
         setLoading(true);
@@ -274,4 +278,3 @@ export const QueueTracking = () => {
     </div>
   );
 };
-

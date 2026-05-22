@@ -172,9 +172,9 @@ public class CitizenController {
         String citizenName = (String) body.get("citizenName");
         String zaloId = (String) body.get("zaloId");
 
-        if (citizenCccd == null) {
+        if (citizenCccd == null && zaloId == null) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("MISSING_FIELDS", "Thiếu thông tin bắt buộc"));
+                    .body(ApiResponse.error("MISSING_FIELDS", "Thiếu CCCD hoặc định danh Zalo để gửi góp ý"));
         }
 
         Integer rating = body.get("rating") != null
@@ -199,7 +199,7 @@ public class CitizenController {
                 .build();
         feedback = feedbackRepository.save(feedback);
 
-        log.info("Citizen {} submitted feedback: {}", citizenCccd, title);
+        log.info("Feedback submitted by {}: {}", (citizenCccd != null ? citizenCccd : zaloId), title);
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", feedback.getId());
@@ -226,9 +226,13 @@ public class CitizenController {
 
         String cccd = body.get("cccd");
         String zaloId = body.get("zaloId");
-        if (cccd == null || !cccd.matches("\\d{12}")) {
+        
+        boolean hasZaloId = zaloId != null && !zaloId.isBlank();
+        boolean hasValidCccd = cccd != null && cccd.matches("\\d{12}");
+
+        if (!hasZaloId && !hasValidCccd) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("INVALID_CCCD", "CCCD không hợp lệ"));
+                    .body(ApiResponse.error("INVALID_SEARCH", "Cần CCCD hoặc định danh Zalo để tra cứu"));
         }
 
         List<Feedback> feedbacks;

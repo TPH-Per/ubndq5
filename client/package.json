@@ -1,11 +1,16 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "govservice-citizen-miniapp",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "zmp start",
+    "start:device": "zmp start -D",
     "build": "vite build",
+    "build:zalo": "zmp build",
+    "deploy": "zmp deploy --existing",
+    "deploy:testing": "zmp deploy --existing --testing",
     "lint": "eslint .",
     "lint:dualite": "eslint --config eslint.dualite.config.js .",
     "tsc:dualite": "yarn tsc -p tsconfig.dualite.json",
@@ -22,7 +27,8 @@
     "react-router-dom": "^7.11.0",
     "recharts": "^3.6.0",
     "sweetalert2": "^11.26.18",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "zmp-sdk": "^2.51.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
@@ -40,6 +46,14 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1",
-    "vite": "^6.3.5"
+    "vite": "^5.4.21",
+    "zmp-cli": "^4.0.3",
+    "zmp-vite-plugin": "^1.1.6"
+  },
+  "zmp": {
+    "appId": "2834564000554668615",
+    "name": "govservice-citizen-miniapp",
+    "framework": "react-typescript",
+    "newProject": false
   }
 }

@@ -40,10 +40,10 @@ export const Profile = () => {
             </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">{citizenName}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">{citizenName || 'Tài khoản Zalo'}</h2>
           <div className="flex items-center gap-2 mt-2 bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100">
             <CreditCard className="h-3.5 w-3.5 text-primary" />
-            <span className="text-sm font-bold text-primary">{citizenId}</span>
+            <span className="text-sm font-bold text-primary">{citizenId || 'Chưa cập nhật CCCD'}</span>
           </div>
         </div>
       </div>
@@ -140,4 +140,3 @@ export const Profile = () => {
     </div>
   );
 };
-

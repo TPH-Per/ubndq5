@@ -1,0 +1,29 @@
+{
+  "appId": "2834564000554668615",
+  "app": {
+    "appId": "2834564000554668615",
+    "title": "DICH VU CONG CHO LON",
+    "headerColor": "#046DD6",
+    "textColor": "white",
+    "statusBarColor": "#046DD6",
+    "leftButton": "back",
+    "actionBarHidden": true,
+    "hideIOSSafeAreaBottom": true,
+    "hideAndroidBottomNavigationBar": true,
+    "statusBar": "transparent"
+  },
+  "debug": false,
+  "listCSS": [
+    "assets/index-Bgxjvgfy.css"
+  ],
+  "listSyncJS": [],
+  "listAsyncJS": [
+    "assets/index.CCN-5i5y.module.js",
+    "assets/index.DfctXiqz.module.js",
+    "assets/vendor.DqST6mml.module.js"
+  ],
+  "pages": [],
+  "template": {
+    "name": "govservice-citizen"
+  }
+}

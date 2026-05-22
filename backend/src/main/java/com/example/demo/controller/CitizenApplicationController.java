@@ -65,12 +65,17 @@ public class CitizenApplicationController {
             map.put("status", CitizenHelperUtils.getStatusName(app.getCurrentPhase()));
             map.put("queueDisplay", app.getQueueDisplay());
             map.put("createdAt", app.getCreatedAt());
+            map.put("citizenName", app.getCitizenName());
+            map.put("zaloLinked", app.getZaloAccount() != null);
 
             List<ApplicationHistory> histories =
                     applicationHistoryRepository.findLatestAppointmentHistory(app.getId());
             if (!histories.isEmpty()) {
                 map.put("appointmentDate", histories.get(0).getAppointmentDate());
                 map.put("appointmentTime", histories.get(0).getExpectedTime());
+                map.put("counter", histories.get(0).getCounter() != null
+                        ? histories.get(0).getCounter().getCounterName()
+                        : null);
             }
             return map;
         }).collect(Collectors.toList());
@@ -113,8 +118,18 @@ public class CitizenApplicationController {
         result.put("createdAt", app.getCreatedAt());
         result.put("deadline", app.getDeadline());
         result.put("citizenName", app.getCitizenName());
-        result.put("citizenCccd", app.getCitizenCccd());
+        result.put("citizenCccd", CitizenHelperUtils.maskCccd(app.getCitizenCccd()));
         result.put("phone", app.getCitizenPhone());
+        result.put("zaloLinked", app.getZaloAccount() != null);
+
+        List<ApplicationHistory> histories = applicationHistoryRepository.findLatestAppointmentHistory(app.getId());
+        if (!histories.isEmpty()) {
+            result.put("appointmentDate", histories.get(0).getAppointmentDate());
+            result.put("appointmentTime", histories.get(0).getExpectedTime());
+            result.put("counter", histories.get(0).getCounter() != null
+                    ? histories.get(0).getCounter().getCounterName()
+                    : null);
+        }
 
         return ResponseEntity.ok(ApiResponse.success(result));
     }

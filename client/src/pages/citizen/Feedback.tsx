@@ -62,6 +62,33 @@ const StarRating = ({ rating, onRate, size = 'lg' }: { rating: number; onRate: (
   );
 };
 
+const StatusBadge = ({ status }: { status: string | number }) => {
+  const isReplied = status === 'RESOLVED' || status === 2;
+  return isReplied ? (
+    <span className="flex items-center gap-1 text-[10px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">
+      <CheckCircle2 className="h-3 w-3" /> Đã trả lời
+    </span>
+  ) : (
+    <span className="flex items-center gap-1 text-[10px] font-bold bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+      <Clock className="h-3 w-3" /> Đang xử lý
+    </span>
+  );
+};
+
+const MiniStars = ({ count }: { count: number }) => (
+  <div className="flex gap-0.5">
+    {[1, 2, 3, 4, 5].map((s) => (
+      <Star
+        key={s}
+        className={cn(
+          "h-3 w-3",
+          s <= count ? "text-yellow-400 fill-current" : "text-gray-300"
+        )}
+      />
+    ))}
+  </div>
+);
+
 export const Feedback = () => {
   const { citizenId, citizenName, zaloId } = useSimulation();
   const location = useLocation();
@@ -78,12 +105,34 @@ export const Feedback = () => {
 
   // Fetch history when tab changes to 'history'
   React.useEffect(() => {
-    if (activeTab === 'history' && citizenId) {
+    if (activeTab === 'history' && (citizenId || zaloId)) {
       const fetchHistory = async () => {
         setIsLoadingHistory(true);
         try {
-          const data = await api.getMyFeedbacks(citizenId, zaloId ?? undefined);
-          setFeedbacks(data);
+          // 1. Lấy dữ liệu bền vững từ LocalStorage của máy
+          const storageKey = `zalo_feedbacks_${zaloId || citizenId || 'guest'}`;
+          const localData = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+          // 2. Vẫn thử gọi API để lấy lịch sử (có thể chứa câu trả lời của cán bộ)
+          let apiData: any[] = [];
+          try {
+            apiData = await api.getMyFeedbacks(citizenId ?? '', zaloId ?? undefined);
+          } catch (apiErr) {
+            console.warn("Không lấy được từ API, dùng dữ liệu local", apiErr);
+          }
+
+          // 3. Hòa trộn dữ liệu: Thêm các phản hồi local chưa có trên Backend vào danh sách
+          const combined = [...apiData];
+          localData.forEach((localItem: any) => {
+            const exists = apiData.some(apiItem =>
+              apiItem.content === localItem.content && apiItem.rating === localItem.rating
+            );
+            if (!exists) combined.push(localItem);
+          });
+
+          // Sắp xếp lại theo thời gian mới nhất
+          combined.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setFeedbacks(combined);
         } catch (error) {
           console.error("Error fetching feedback:", error);
         } finally {
@@ -92,11 +141,11 @@ export const Feedback = () => {
       };
       fetchHistory();
     }
-  }, [activeTab, citizenId]);
+  }, [activeTab, citizenId, zaloId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!citizenId) return;
+    if (!citizenId && !zaloId) return;
 
     if (form.rating === 0) {
       alert('Vui lòng chọn số sao đánh giá');
@@ -109,12 +158,27 @@ export const Feedback = () => {
         type: TYPE_MAP[form.category] || 1,
         title: form.title,
         content: form.content || undefined,
-        citizenCccd: citizenId,
-        citizenName: citizenName,
+        citizenCccd: citizenId || '',
+        citizenName: citizenName || 'Người dùng Zalo',
         applicationId: linkedApplicationId,
-        zaloId: zaloId,
+        zaloId: zaloId || undefined,
         rating: form.rating,
       });
+
+      // LƯU TRỮ BỀN VỮNG: Lưu phản hồi ngay vào bộ nhớ máy (gắn với zaloId)
+      const storageKey = `zalo_feedbacks_${zaloId || citizenId || 'guest'}`;
+      const history = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const newFeedback = {
+        id: 'local_' + Date.now(),
+        title: form.title || 'Góp ý dịch vụ',
+        content: form.content,
+        rating: form.rating,
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
+        applicationCode: linkedProcedureName,
+        replies: []
+      };
+      localStorage.setItem(storageKey, JSON.stringify([newFeedback, ...history]));
 
       setIsSubmitted(true);
       setForm({ title: '', content: '', category: 'service', rating: 0 });
@@ -126,33 +190,6 @@ export const Feedback = () => {
       setIsSubmitting(false);
     }
   };
-
-  const StatusBadge = ({ status }: { status: string | number }) => {
-    const isReplied = status === 'RESOLVED' || status === 2;
-    return isReplied ? (
-      <span className="flex items-center gap-1 text-[10px] font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full">
-        <CheckCircle2 className="h-3 w-3" /> Đã trả lời
-      </span>
-    ) : (
-      <span className="flex items-center gap-1 text-[10px] font-bold bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
-        <Clock className="h-3 w-3" /> Đang xử lý
-      </span>
-    );
-  };
-
-  const MiniStars = ({ count }: { count: number }) => (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <Star
-          key={s}
-          className={cn(
-            "h-3 w-3",
-            s <= count ? "text-yellow-400 fill-current" : "text-gray-300"
-          )}
-        />
-      ))}
-    </div>
-  );
 
   return (
     <div className="min-h-full bg-gray-50 flex flex-col">
