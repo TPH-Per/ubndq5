@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -28,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @Component
 @Order(10)
 @Slf4j
+@ConditionalOnProperty(name = "app.rate-limit.enabled", havingValue = "true", matchIfMissing = true)
 public class CitizenRateLimitFilter extends OncePerRequestFilter {
 
     // key = "IP|bucket|minuteEpoch" → request count in that window

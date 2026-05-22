@@ -24,6 +24,7 @@ export const CitizenLayout = () => {
     if (path.includes('/citizen/appointments')) return 'Lịch hẹn của tôi';
     if (path.includes('/citizen/documents')) return 'Hồ sơ của tôi';
     if (path.includes('/citizen/queue')) return 'Theo dõi hàng chờ';
+    if (path.includes('/citizen/guide')) return 'Hướng dẫn & Quy định';
     return 'Chi tiết dịch vụ';
   };
 

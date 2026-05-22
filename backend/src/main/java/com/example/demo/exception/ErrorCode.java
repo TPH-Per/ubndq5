@@ -54,6 +54,8 @@ public enum ErrorCode {
     MISSING_ZALO_AUTH("AUTH_007", "Cần đăng nhập Zalo để thực hiện thao tác này", HttpStatus.UNAUTHORIZED),
     APPOINTMENT_TOO_SOON_TO_BOOK("APPT_008", "Chỉ có thể đặt lịch hẹn trước giờ hẹn ít nhất 2 tiếng",
             HttpStatus.BAD_REQUEST),
+    BOOKING_LIMIT_REACHED("BOOK_001", "Bạn đã có lịch hẹn đang chờ xử lý. Vui lòng hủy lịch hẹn cũ trước khi đặt mới.",
+            HttpStatus.CONFLICT),
 
     // ==================== PROCEDURE ERRORS (6xxx) ====================
     LOAITHUTUC_NOT_FOUND("PROC_001", "Không tìm thấy loại thủ tục", HttpStatus.NOT_FOUND),

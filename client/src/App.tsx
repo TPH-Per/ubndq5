@@ -10,6 +10,7 @@ import { MyAppointments } from './pages/citizen/MyAppointments';
 import { MyDocuments } from './pages/citizen/MyDocuments';
 import { Profile } from './pages/citizen/Profile';
 import { Feedback } from './pages/citizen/Feedback';
+import { Guide } from './pages/citizen/Guide';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path="documents" element={<MyDocuments />} />
             <Route path="profile" element={<Profile />} />
             <Route path="feedback" element={<Feedback />} />
+            <Route path="guide" element={<Guide />} />
           </Route>
 
           {/* Redirect any other routes to citizen home */}

@@ -36,13 +36,18 @@ public class CorsConfig implements WebMvcConfigurer {
         @Value("${app.cors.allowed-origins}")
         private String allowedOriginsRaw;
 
+        @Value("${app.rate-limit.enabled:true}")
+        private boolean rateLimitEnabled;
+
         /**
          * Rate limiter: 30 req/min per IP for citizen endpoints
          */
         @Override
         public void addInterceptors(InterceptorRegistry registry) {
-                registry.addInterceptor(new RateLimitInterceptor())
-                                .addPathPatterns("/api/citizen/**");
+                if (rateLimitEnabled) {
+                        registry.addInterceptor(new RateLimitInterceptor())
+                                        .addPathPatterns("/api/citizen/**");
+                }
         }
 
         /**

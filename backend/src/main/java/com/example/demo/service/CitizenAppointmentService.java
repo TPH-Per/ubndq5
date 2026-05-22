@@ -58,6 +58,18 @@ public class CitizenAppointmentService {
             throw new AppException(ErrorCode.APPOINTMENT_TOO_SOON_TO_BOOK);
         }
 
+        // Check: zaloId already has an active (PENDING or QUEUE) appointment
+        List<Application> existingActive = applicationRepository
+                .findByZaloAccount_ZaloIdOrderByCreatedAtDesc(req.getZaloId())
+                .stream()
+                .filter(a -> a.getCurrentPhase() == Application.PHASE_PENDING
+                        || a.getCurrentPhase() == Application.PHASE_QUEUE)
+                .toList();
+
+        if (!existingActive.isEmpty()) {
+            throw new AppException(ErrorCode.BOOKING_LIMIT_REACHED);
+        }
+
         Procedure procedure = procedureRepository.findById(req.getProcedureId())
                 .orElseThrow(() -> new AppException(ErrorCode.LOAITHUTUC_NOT_FOUND));
 

@@ -257,7 +257,7 @@ export const CitizenHome = () => {
             icon={Info}
             color="bg-purple-500"
             delay={4}
-            onClick={() => { }}
+            onClick={() => navigate('guide')}
           />
         </div>
 

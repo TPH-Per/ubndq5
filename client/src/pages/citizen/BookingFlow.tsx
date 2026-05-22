@@ -5,7 +5,7 @@ import * as api from '../../services/citizenApi';
 import Swal from 'sweetalert2';
 import {
   Search, Clock, FileText, ChevronRight, Calendar as CalendarIcon,
-  MapPin, Camera, Scan, CheckCircle2, Loader2,
+  MapPin, Scan, CheckCircle2, Loader2,
   Briefcase, GraduationCap, Heart, Scale, HardHat, FileCheck, Landmark, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -247,20 +247,21 @@ export const BookingFlow = () => {
     }
 
     setIsBooking(true);
-    if (formData.fullName !== citizenName) setCitizenName(formData.fullName);
-    if (formData.phone !== citizenPhone) setCitizenPhone(formData.phone);
 
     const result = await bookAppointment({
       procedureId: selectedService.id,
       date: selectedDate,
       time: selectedTime,
       phone: formData.phone,
-      notes: formData.notes || undefined
+      notes: formData.notes || undefined,
+      citizenNameOverride: formData.fullName.trim() || undefined,
     });
 
     setIsBooking(false);
 
     if (result) {
+      if (formData.fullName.trim()) setCitizenName(formData.fullName.trim());
+      if (formData.phone) setCitizenPhone(formData.phone);
       setLatestBooking(result);
       setStep(5);
     } else {
@@ -601,37 +602,26 @@ const Step3 = ({ selectedDate, setSelectedDate, selectedTime, setSelectedTime, a
               </div>
             ) : availableSlots.length > 0 ? (
               <div className="grid grid-cols-3 gap-3">
-                {availableSlots.map((slot) => {
-                  const isToday = selectedDate ? isSameDay(selectedDate, new Date()) : false;
-                  const [hours, minutes] = slot.time.split(':').map(Number);
-                  const slotTimeCheck = new Date();
-                  slotTimeCheck.setHours(hours, minutes, 0, 0);
-                  const isPast = isToday && slotTimeCheck < new Date();
-
-                  return (
+                {availableSlots.map((slot) => (
                     <button
                       key={slot.time}
-                      onClick={() => !isPast && setSelectedTime(slot.time)}
-                      disabled={isPast}
+                      onClick={() => setSelectedTime(slot.time)}
                       className={cn(
                         "py-3 px-2 rounded-xl border text-sm font-semibold transition-all shadow-sm",
-                        isPast
-                          ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-70"
-                          : selectedTime === slot.time
-                            ? "bg-primary border-primary text-white ring-2 ring-primary/20"
-                            : "bg-white border-gray-100 text-gray-700 hover:border-primary/50 hover:bg-blue-50"
+                        selectedTime === slot.time
+                          ? "bg-primary border-primary text-white ring-2 ring-primary/20"
+                          : "bg-white border-gray-100 text-gray-700 hover:border-primary/50 hover:bg-blue-50"
                       )}
                     >
                       {slot.time}
                       <span className={cn(
                         "block text-[10px] font-normal mt-0.5",
-                        isPast ? "text-gray-400" : selectedTime === slot.time ? "text-blue-100" : "text-gray-400"
+                        selectedTime === slot.time ? "text-blue-100" : "text-gray-400"
                       )}>
-                        {isPast ? 'Đã qua' : 'Còn trống'}
+                        Còn trống
                       </span>
                     </button>
-                  );
-                })}
+                ))}
               </div>
             ) : (
               <div className="text-center p-4 bg-gray-50 rounded-xl text-gray-500 text-sm">
@@ -658,17 +648,9 @@ const Step3 = ({ selectedDate, setSelectedDate, selectedTime, setSelectedTime, a
 // --- Step 4: Form ---
 const Step4 = ({ formData, setFormData, setCitizenId, setCitizenPhone, selectedService, isBooking, handleBooking }: Step4Props) => (
   <div className="p-4 space-y-6">
-    <div className="bg-white p-6 rounded-2xl border-2 border-dashed border-primary/30 flex flex-col items-center justify-center text-center gap-3">
-      <div className="h-12 w-12 bg-blue-50 rounded-full flex items-center justify-center">
-        <Scan className="h-6 w-6 text-primary" />
-      </div>
-      <div>
-        <h3 className="font-bold text-gray-900">Quét mã QR CCCD</h3>
-        <p className="text-xs text-gray-500 mt-1">Tự động điền thông tin cá nhân</p>
-      </div>
-      <Button variant="outline" size="sm" className="gap-2">
-        <Camera className="h-4 w-4" /> Mở Camera
-      </Button>
+    <div className="bg-gray-50 p-5 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center gap-2 text-center opacity-60">
+      <Scan className="h-8 w-8 text-gray-400" />
+      <p className="text-xs text-gray-400 font-medium">Quét CCCD (Sắp ra mắt)</p>
     </div>
 
     <div className="flex items-center gap-4">

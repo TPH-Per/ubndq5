@@ -35,6 +35,7 @@ interface SimulationContextType {
     phone?: string;
     email?: string;
     notes?: string;
+    citizenNameOverride?: string;
   }) => Promise<api.AppointmentResponse | null>;
   cancelAppointment: (id: string, reason?: string) => Promise<void>;
   refreshAppointments: () => Promise<void>;
@@ -109,7 +110,8 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
     let cancelled = false;
 
     const syncZaloIdentity = async () => {
-      const profile = await loadZaloProfile();
+      const testProfile = (window as any).__TEST_ZALO_PROFILE__;
+      const profile = testProfile ?? await loadZaloProfile();
       if (!profile || cancelled) {
         return;
       }
@@ -169,6 +171,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
     phone?: string;
     email?: string;
     notes?: string;
+    citizenNameOverride?: string;
   }): Promise<api.AppointmentResponse | null> => {
     if (!zaloId) {
       console.error('Booking requires an authenticated Zalo account');
@@ -182,7 +185,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
         procedureId: data.procedureId,
         appointmentDate: format(data.date, 'yyyy-MM-dd'),
         appointmentTime: data.time,
-        citizenName: citizenName || zaloName || 'Công dân Zalo',
+        citizenName: data.citizenNameOverride || citizenName || zaloName || 'Công dân Zalo',
         citizenCccd: citizenId,
         citizenPhone: data.phone || citizenPhone,
         citizenEmail: data.email,
@@ -196,7 +199,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
       const newAppointment: Appointment = {
         id: result.id.toString(),
         queueNumber: result.queueDisplay,
-        citizenName: citizenName || zaloName || 'Công dân Zalo',
+        citizenName: data.citizenNameOverride || citizenName || zaloName || 'Công dân Zalo',
         procedure: result.procedureName,
         time: result.appointmentTime,
         status: 'scheduled',

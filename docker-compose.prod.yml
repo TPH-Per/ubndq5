@@ -37,8 +37,9 @@ services:
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       SPRING_PROFILES_ACTIVE: prod
-    expose:
-      - "8081"
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+    ports:
+      - "127.0.0.1:8081:8081"
     networks:
       - govservice_net
     healthcheck:
