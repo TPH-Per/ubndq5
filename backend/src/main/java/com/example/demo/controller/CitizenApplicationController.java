@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.response.ApiResponse;
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
+import com.example.demo.service.ZaloAccountService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,14 @@ public class CitizenApplicationController {
 
     private final ApplicationRepository applicationRepository;
     private final ApplicationHistoryRepository applicationHistoryRepository;
+    private final ZaloAccountService zaloAccountService;
+
+    private String resolveVerifiedZaloId(String zaloId, String accessToken) {
+        if (accessToken != null && !accessToken.isEmpty()) {
+            return zaloAccountService.verifyAccessToken(accessToken);
+        }
+        return zaloId;
+    }
 
     /**
      * Tìm kiếm hồ sơ của công dân theo Zalo account
@@ -37,7 +46,7 @@ public class CitizenApplicationController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> searchApplications(
             @RequestBody Map<String, String> body) {
 
-        String zaloId = body.get("zaloId");
+        String zaloId = resolveVerifiedZaloId(body.get("zaloId"), body.get("accessToken"));
         String status = body.get("status");
 
         if (zaloId == null || zaloId.isEmpty()) {
@@ -93,7 +102,7 @@ public class CitizenApplicationController {
             @PathVariable Integer id,
             @RequestBody Map<String, String> body) {
 
-        String zaloId = body.get("zaloId");
+        String zaloId = resolveVerifiedZaloId(body.get("zaloId"), body.get("accessToken"));
         if (zaloId == null || zaloId.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("MISSING_ZALO_ID", "Cần zaloId để xem chi tiết hồ sơ"));
@@ -144,7 +153,7 @@ public class CitizenApplicationController {
             @PathVariable Integer id,
             @RequestBody Map<String, String> body) {
 
-        String zaloId = body.get("zaloId");
+        String zaloId = resolveVerifiedZaloId(body.get("zaloId"), body.get("accessToken"));
         if (zaloId == null || zaloId.isEmpty()) {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error("MISSING_ZALO_ID", "Cần zaloId để xem lịch sử hồ sơ"));

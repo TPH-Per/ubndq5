@@ -3,6 +3,7 @@ package com.example.demo.controller;
 import com.example.demo.dto.response.ApiResponse;
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
+import com.example.demo.service.ZaloAccountService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +40,7 @@ public class CitizenController {
     private final ApplicationHistoryRepository applicationHistoryRepository;
     private final FeedbackRepository feedbackRepository;
     private final ReplyRepository replyRepository;
+    private final ZaloAccountService zaloAccountService;
 
     // ==================== THỦ TỤC HÀNH CHÍNH ====================
 
@@ -170,7 +172,13 @@ public class CitizenController {
                 ? (String) body.get("citizenCccd")
                 : (String) body.get("citizenId");
         String citizenName = (String) body.get("citizenName");
-        String zaloId = (String) body.get("zaloId");
+        String rawZaloId = (String) body.get("zaloId");
+        String accessToken = (String) body.get("accessToken");
+
+        // Verify token if provided, otherwise use raw zaloId
+        String zaloId = (accessToken != null && !accessToken.isEmpty())
+                ? zaloAccountService.verifyAccessToken(accessToken)
+                : rawZaloId;
 
         if (citizenCccd == null && zaloId == null) {
             return ResponseEntity.badRequest()
@@ -225,8 +233,14 @@ public class CitizenController {
             @RequestBody Map<String, String> body) {
 
         String cccd = body.get("cccd");
-        String zaloId = body.get("zaloId");
-        
+        String rawZaloId = body.get("zaloId");
+        String accessToken = body.get("accessToken");
+
+        // Verify token if provided, otherwise use raw zaloId
+        String zaloId = (accessToken != null && !accessToken.isEmpty())
+                ? zaloAccountService.verifyAccessToken(accessToken)
+                : rawZaloId;
+
         boolean hasZaloId = zaloId != null && !zaloId.isBlank();
         boolean hasValidCccd = cccd != null && cccd.matches("\\d{12}");
 

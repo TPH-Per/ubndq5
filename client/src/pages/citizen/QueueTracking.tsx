@@ -10,7 +10,7 @@ import Swal from 'sweetalert2';
 export const QueueTracking = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { zaloId, refreshAppointments } = useSimulation();
+  const { zaloId, accessToken, refreshAppointments } = useSimulation();
 
   const [appointment, setAppointment] = useState<api.AppointmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ export const QueueTracking = () => {
 
       try {
         setLoading(true);
-        const data = await api.getAppointmentDetail(parseInt(id), zaloId);
+        const data = await api.getAppointmentDetail(parseInt(id), zaloId, accessToken);
         setAppointment(data);
       } catch (err: any) {
         setError(err.message || 'Không thể tải thông tin lịch hẹn');
@@ -83,7 +83,7 @@ export const QueueTracking = () => {
 
     try {
       setCancelling(true);
-      await api.cancelAppointment(parseInt(id!), zaloId);
+      await api.cancelAppointment(parseInt(id!), zaloId, accessToken);
       await refreshAppointments();
       Swal.fire({
         icon: 'success',

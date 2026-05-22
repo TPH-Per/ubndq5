@@ -60,7 +60,7 @@ const StatusBadge = ({ status }: { status: string }) => (
 );
 
 export const MyDocuments = () => {
-  const { zaloId } = useSimulation();
+  const { zaloId, accessToken } = useSimulation();
   const [applications, setApplications] = useState<api.ApplicationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingDetailId, setLoadingDetailId] = useState<number | null>(null);
@@ -76,7 +76,7 @@ export const MyDocuments = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await api.getMyApplications(zaloId);
+      const data = await api.getMyApplications(zaloId, undefined, accessToken);
       setApplications(data);
     } catch (fetchError) {
       console.error('Failed to fetch applications:', fetchError);
@@ -112,8 +112,8 @@ export const MyDocuments = () => {
     setLoadingDetailId(applicationId);
     try {
       const [detail, history] = await Promise.all([
-        api.getApplicationDetail(applicationId, zaloId),
-        api.getApplicationHistory(applicationId, zaloId),
+        api.getApplicationDetail(applicationId, zaloId, accessToken),
+        api.getApplicationHistory(applicationId, zaloId, accessToken),
       ]);
 
       setSelected({ detail, history });

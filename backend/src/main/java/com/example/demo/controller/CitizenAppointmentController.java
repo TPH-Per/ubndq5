@@ -96,7 +96,7 @@ public class CitizenAppointmentController {
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> searchAppointments(
             @RequestBody Map<String, String> body) {
         List<Map<String, Object>> result = appointmentService.searchAppointments(
-                body.get("zaloId"), body.get("status"));
+                body.get("zaloId"), body.get("status"), body.get("accessToken"));
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -109,7 +109,7 @@ public class CitizenAppointmentController {
     public ResponseEntity<ApiResponse<Object>> cancelAppointment(
             @PathVariable Integer id,
             @RequestBody Map<String, String> body) {
-        appointmentService.cancelAppointment(id, body.get("zaloId"));
+        appointmentService.cancelAppointment(id, body.get("zaloId"), body.get("accessToken"));
         return ResponseEntity.ok(ApiResponse.success(null, "Đã hủy lịch hẹn"));
     }
 
@@ -122,7 +122,7 @@ public class CitizenAppointmentController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAppointmentById(
             @PathVariable Integer id,
             @RequestBody Map<String, String> body) {
-        Map<String, Object> result = appointmentService.getAppointmentDetail(id, body.get("zaloId"));
+        Map<String, Object> result = appointmentService.getAppointmentDetail(id, body.get("zaloId"), body.get("accessToken"));
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

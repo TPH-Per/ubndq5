@@ -90,7 +90,7 @@ const MiniStars = ({ count }: { count: number }) => (
 );
 
 export const Feedback = () => {
-  const { citizenId, citizenName, zaloId } = useSimulation();
+  const { citizenId, citizenName, zaloId, accessToken } = useSimulation();
   const location = useLocation();
   const locationState = (location.state as { applicationId?: number; procedureName?: string; fromAppointment?: boolean } | null);
 
@@ -116,7 +116,7 @@ export const Feedback = () => {
           // 2. Vẫn thử gọi API để lấy lịch sử (có thể chứa câu trả lời của cán bộ)
           let apiData: any[] = [];
           try {
-            apiData = await api.getMyFeedbacks(citizenId ?? '', zaloId ?? undefined);
+            apiData = await api.getMyFeedbacks(citizenId ?? '', zaloId ?? undefined, accessToken);
           } catch (apiErr) {
             console.warn("Không lấy được từ API, dùng dữ liệu local", apiErr);
           }
@@ -162,6 +162,7 @@ export const Feedback = () => {
         citizenName: citizenName || 'Người dùng Zalo',
         applicationId: linkedApplicationId,
         zaloId: zaloId || undefined,
+        accessToken: accessToken || undefined,
         rating: form.rating,
       });
 

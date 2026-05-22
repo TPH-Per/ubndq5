@@ -82,6 +82,7 @@ export interface CreateAppointmentRequest {
     citizenPhone: string;
     citizenEmail?: string;
     zaloId: string;           // bắt buộc — định danh người đặt lịch
+    accessToken?: string;     // Zalo Mini App access token — dùng để verify zaloId ở backend
     zaloName?: string;
     notes?: string;            // Ghi chú tuỳ chọn từ công dân
 }
@@ -156,6 +157,7 @@ export interface FeedbackRequest {
     phone?: string;
     applicationId?: number; // optional: link to application
     zaloId?: string;
+    accessToken?: string;   // Zalo Mini App access token
     rating?: number;        // 1-5 star rating
 }
 
@@ -210,10 +212,10 @@ export async function createAppointment(data: CreateAppointmentRequest): Promise
  * Get citizen's appointments by Zalo account
  * Maps to: POST /api/citizen/appointments/search
  */
-export async function getMyAppointments(zaloId: string, status?: string): Promise<ApplicationSummary[]> {
+export async function getMyAppointments(zaloId: string, status?: string, accessToken?: string): Promise<ApplicationSummary[]> {
     return fetchAPI<ApplicationSummary[]>('/appointments/search', {
         method: 'POST',
-        body: JSON.stringify({ zaloId, status }),
+        body: JSON.stringify({ zaloId, status, accessToken }),
     });
 }
 
@@ -221,10 +223,10 @@ export async function getMyAppointments(zaloId: string, status?: string): Promis
  * Cancel an appointment — authenticated by zaloId
  * Maps to: POST /api/citizen/appointments/{id}/cancel
  */
-export async function cancelAppointment(id: number, zaloId: string): Promise<void> {
+export async function cancelAppointment(id: number, zaloId: string, accessToken?: string): Promise<void> {
     return fetchAPI<void>(`/appointments/${id}/cancel`, {
         method: 'POST',
-        body: JSON.stringify({ zaloId }),
+        body: JSON.stringify({ zaloId, accessToken }),
     });
 }
 
@@ -271,10 +273,10 @@ export interface ZaloProfileSyncResponse {
  * Get appointment detail — authenticated by zaloId
  * Maps to: POST /api/citizen/appointments/{id}/view
  */
-export async function getAppointmentDetail(id: number, zaloId: string): Promise<AppointmentDetail> {
+export async function getAppointmentDetail(id: number, zaloId: string, accessToken?: string): Promise<AppointmentDetail> {
     return fetchAPI<AppointmentDetail>(`/appointments/${id}/view`, {
         method: 'POST',
-        body: JSON.stringify({ zaloId }),
+        body: JSON.stringify({ zaloId, accessToken }),
     });
 }
 
@@ -282,10 +284,10 @@ export async function getAppointmentDetail(id: number, zaloId: string): Promise<
  * Get citizen's applications (hồ sơ) by Zalo account
  * Maps to: POST /api/citizen/applications/search
  */
-export async function getMyApplications(zaloId: string, status?: string): Promise<ApplicationSummary[]> {
+export async function getMyApplications(zaloId: string, status?: string, accessToken?: string): Promise<ApplicationSummary[]> {
     return fetchAPI<ApplicationSummary[]>('/applications/search', {
         method: 'POST',
-        body: JSON.stringify({ zaloId, status }),
+        body: JSON.stringify({ zaloId, status, accessToken }),
     });
 }
 
@@ -293,10 +295,10 @@ export async function getMyApplications(zaloId: string, status?: string): Promis
  * Get application detail — authenticated by zaloId
  * Maps to: POST /api/citizen/applications/{id}/view
  */
-export async function getApplicationDetail(id: number, zaloId: string): Promise<ApplicationDetail> {
+export async function getApplicationDetail(id: number, zaloId: string, accessToken?: string): Promise<ApplicationDetail> {
     return fetchAPI<ApplicationDetail>(`/applications/${id}/view`, {
         method: 'POST',
-        body: JSON.stringify({ zaloId }),
+        body: JSON.stringify({ zaloId, accessToken }),
     });
 }
 
@@ -304,10 +306,10 @@ export async function getApplicationDetail(id: number, zaloId: string): Promise<
  * Get application history — authenticated by zaloId
  * Maps to: POST /api/citizen/applications/{id}/history
  */
-export async function getApplicationHistory(id: number, zaloId: string): Promise<ApplicationHistory[]> {
+export async function getApplicationHistory(id: number, zaloId: string, accessToken?: string): Promise<ApplicationHistory[]> {
     return fetchAPI<ApplicationHistory[]>(`/applications/${id}/history`, {
         method: 'POST',
-        body: JSON.stringify({ zaloId }),
+        body: JSON.stringify({ zaloId, accessToken }),
     });
 }
 
@@ -335,10 +337,10 @@ export async function submitFeedback(data: FeedbackRequest): Promise<{ id: numbe
  * zaloId is used to verify ownership on the backend.
  * Maps to: POST /api/citizen/reports/search
  */
-export async function getMyFeedbacks(cccd: string, zaloId?: string): Promise<Feedback[]> {
+export async function getMyFeedbacks(cccd: string, zaloId?: string, accessToken?: string): Promise<Feedback[]> {
     return fetchAPI<Feedback[]>('/reports/search', {
         method: 'POST',
-        body: JSON.stringify({ cccd, zaloId }),
+        body: JSON.stringify({ cccd, zaloId, accessToken }),
     });
 }
 

@@ -25,6 +25,7 @@ interface SimulationContextType {
   zaloId: string;
   zaloName: string;
   zaloAvatar?: string;
+  accessToken: string;
   setCitizenId: (id: string) => void;
   setCitizenName: (name: string) => void;
   setCitizenPhone: (phone: string) => void;
@@ -75,6 +76,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
   const [zaloId, setZaloId] = useState('');
   const [zaloName, setZaloName] = useState('');
   const [zaloAvatar, setZaloAvatar] = useState<string | undefined>(undefined);
+  const [accessToken, setAccessToken] = useState('');
 
   const refreshAppointments = useCallback(async () => {
     if (!zaloId) {
@@ -84,7 +86,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
 
     setIsLoading(true);
     try {
-      const appointments = await api.getMyAppointments(zaloId);
+      const appointments = await api.getMyAppointments(zaloId, undefined, accessToken);
       const mapped: Appointment[] = appointments.map((app) => ({
         id: app.id.toString(),
         queueNumber: app.queueDisplay || '',
@@ -104,20 +106,22 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
     } finally {
       setIsLoading(false);
     }
-  }, [citizenName, zaloId, zaloName]);
+  }, [citizenName, zaloId, zaloName, accessToken]);
 
   useEffect(() => {
     let cancelled = false;
 
     const syncZaloIdentity = async () => {
-      const testProfile = (window as any).__TEST_ZALO_PROFILE__;
-      const profile = testProfile ?? await loadZaloProfile();
+      const profile = await loadZaloProfile();
       if (!profile || cancelled) {
         return;
       }
 
       setZaloId(profile.id);
       setZaloAvatar(profile.avatar);
+      if (profile.accessToken) {
+        setAccessToken(profile.accessToken);
+      }
 
       if (profile.name) {
         setZaloName(profile.name);
@@ -190,6 +194,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
         citizenPhone: data.phone || citizenPhone,
         citizenEmail: data.email,
         zaloId,
+        accessToken,
         zaloName: zaloName || citizenName,
         notes: data.notes,
       };
@@ -229,7 +234,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
 
     try {
       setIsLoading(true);
-      await api.cancelAppointment(parseInt(id, 10), zaloId);
+      await api.cancelAppointment(parseInt(id, 10), zaloId, accessToken);
 
       setMyAppointments((prev) =>
         prev.map((appointment) =>
@@ -256,6 +261,7 @@ export const SimulationProvider = ({ children }: { children: React.ReactNode }) 
         zaloId,
         zaloName,
         zaloAvatar,
+        accessToken,
         setCitizenId,
         setCitizenName,
         setCitizenPhone,

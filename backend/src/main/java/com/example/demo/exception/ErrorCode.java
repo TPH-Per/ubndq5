@@ -52,6 +52,7 @@ public enum ErrorCode {
     APPLICATION_NOT_FOUND("APPT_006", "Không tìm thấy hồ sơ hoặc lịch hẹn", HttpStatus.NOT_FOUND),
     CANNOT_CANCEL_IN_CURRENT_STATUS("APPT_007", "Không thể hủy lịch hẹn ở trạng thái này", HttpStatus.BAD_REQUEST),
     MISSING_ZALO_AUTH("AUTH_007", "Cần đăng nhập Zalo để thực hiện thao tác này", HttpStatus.UNAUTHORIZED),
+    ZALO_TOKEN_INVALID("AUTH_008", "Phiên đăng nhập Zalo không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.", HttpStatus.UNAUTHORIZED),
     APPOINTMENT_TOO_SOON_TO_BOOK("APPT_008", "Chỉ có thể đặt lịch hẹn trước giờ hẹn ít nhất 2 tiếng",
             HttpStatus.BAD_REQUEST),
     BOOKING_LIMIT_REACHED("BOOK_001", "Bạn đã có lịch hẹn đang chờ xử lý. Vui lòng hủy lịch hẹn cũ trước khi đặt mới.",

@@ -28,6 +28,8 @@ public class CreateAppointmentRequest {
     @NotBlank(message = "Cần đăng nhập Zalo để đặt lịch hẹn")
     private String zaloId;
 
+    private String accessToken; // Zalo Mini App access token — dùng để verify zaloId ở backend
+
     private String zaloName;
 
     private String notes; // Ghi chú/mô tả từ công dân (không bắt buộc)

@@ -4,6 +4,7 @@ export interface ZaloMiniAppProfile {
   name?: string;
   avatar?: string;
   followedOa?: boolean;
+  accessToken?: string;
 }
 
 export function isZaloMiniAppRuntime() {
@@ -24,6 +25,14 @@ export async function loadZaloProfile(): Promise<ZaloMiniAppProfile | null> {
     console.warn('Unable to read Zalo user ID', error);
   }
 
+  // Get access token for server-side verification
+  let accessToken = '';
+  try {
+    accessToken = await sdk.getAccessToken({});
+  } catch (error) {
+    console.warn('Unable to get Zalo access token', error);
+  }
+
   try {
     const { userInfo } = await sdk.getUserInfo({
       autoRequestPermission: true,
@@ -35,6 +44,7 @@ export async function loadZaloProfile(): Promise<ZaloMiniAppProfile | null> {
       name: userInfo.name,
       avatar: userInfo.avatar,
       followedOa: userInfo.followedOA,
+      accessToken,
     };
   } catch (error) {
     if (!id) {
@@ -42,6 +52,6 @@ export async function loadZaloProfile(): Promise<ZaloMiniAppProfile | null> {
       return null;
     }
 
-    return { id };
+    return { id, accessToken };
   }
 }

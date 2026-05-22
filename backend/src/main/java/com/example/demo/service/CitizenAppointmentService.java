@@ -39,6 +39,9 @@ public class CitizenAppointmentService {
 
     @Transactional
     public Map<String, Object> createAppointment(CreateAppointmentRequest req) {
+        // Verify Zalo access token — lấy zaloId đã được verify, KHÔNG dùng client zaloId
+        String verifiedZaloId = zaloAccountService.verifyAccessToken(req.getAccessToken());
+
         // Parse and validate dates
         LocalDate appointmentDate;
         LocalTime appointmentTime;
@@ -58,9 +61,9 @@ public class CitizenAppointmentService {
             throw new AppException(ErrorCode.APPOINTMENT_TOO_SOON_TO_BOOK);
         }
 
-        // Check: zaloId already has an active (PENDING or QUEUE) appointment
+        // Check: verifiedZaloId already has an active (PENDING or QUEUE) appointment
         List<Application> existingActive = applicationRepository
-                .findByZaloAccount_ZaloIdOrderByCreatedAtDesc(req.getZaloId())
+                .findByZaloAccount_ZaloIdOrderByCreatedAtDesc(verifiedZaloId)
                 .stream()
                 .filter(a -> a.getCurrentPhase() == Application.PHASE_PENDING
                         || a.getCurrentPhase() == Application.PHASE_QUEUE)
@@ -77,7 +80,7 @@ public class CitizenAppointmentService {
         appointmentBookingService.acquireSlotLock(appointmentDate, appointmentTime);
 
         ZaloAccount zaloAccount = zaloAccountService.syncProfile(
-                req.getZaloId(),
+                verifiedZaloId,
                 req.getZaloName(),
                 null,
                 null,
@@ -130,7 +133,7 @@ public class CitizenAppointmentService {
                 .createdAt(LocalDateTime.now())
                 .build());
 
-        log.info("Appointment booked: zaloId={} procedure={}", req.getZaloId(), procedure.getProcedureCode());
+        log.info("Appointment booked: zaloId={} procedure={}", verifiedZaloId, procedure.getProcedureCode());
 
         Map<String, Object> result = new HashMap<>();
         result.put("id", app.getId());
@@ -149,12 +152,17 @@ public class CitizenAppointmentService {
     // ======================== SEARCH ========================
 
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> searchAppointments(String zaloId, String status) {
-        if (zaloId == null || zaloId.isEmpty()) {
+    public List<Map<String, Object>> searchAppointments(String zaloId, String status, String accessToken) {
+        // Verify token if provided, otherwise fallback to zaloId check
+        String verifiedZaloId = (accessToken != null && !accessToken.isEmpty())
+                ? zaloAccountService.verifyAccessToken(accessToken)
+                : zaloId;
+
+        if (verifiedZaloId == null || verifiedZaloId.isEmpty()) {
             throw new AppException(ErrorCode.MISSING_ZALO_AUTH);
         }
 
-        List<Application> apps = applicationRepository.findByZaloAccount_ZaloIdOrderByCreatedAtDesc(zaloId);
+        List<Application> apps = applicationRepository.findByZaloAccount_ZaloIdOrderByCreatedAtDesc(verifiedZaloId);
 
         if (status != null) {
             apps = apps.stream().filter(app -> switch (status.toUpperCase()) {
@@ -192,15 +200,20 @@ public class CitizenAppointmentService {
     // ======================== CANCEL ========================
 
     @Transactional
-    public void cancelAppointment(Integer id, String zaloId) {
-        if (zaloId == null || zaloId.isEmpty()) {
+    public void cancelAppointment(Integer id, String zaloId, String accessToken) {
+        // Verify token if provided, otherwise fallback to zaloId check
+        String verifiedZaloId = (accessToken != null && !accessToken.isEmpty())
+                ? zaloAccountService.verifyAccessToken(accessToken)
+                : zaloId;
+
+        if (verifiedZaloId == null || verifiedZaloId.isEmpty()) {
             throw new AppException(ErrorCode.MISSING_ZALO_AUTH);
         }
 
         // Uniform 404 — prevents resource enumeration
         Application app = applicationRepository.findById(id).orElse(null);
         if (app == null || app.getZaloAccount() == null
-                || !app.getZaloAccount().getZaloId().equals(zaloId)) {
+                || !app.getZaloAccount().getZaloId().equals(verifiedZaloId)) {
             throw new AppException(ErrorCode.APPLICATION_NOT_FOUND);
         }
 
@@ -246,15 +259,20 @@ public class CitizenAppointmentService {
     // ======================== VIEW ========================
 
     @Transactional(readOnly = true)
-    public Map<String, Object> getAppointmentDetail(Integer id, String zaloId) {
-        if (zaloId == null || zaloId.isEmpty()) {
+    public Map<String, Object> getAppointmentDetail(Integer id, String zaloId, String accessToken) {
+        // Verify token if provided, otherwise fallback to zaloId check
+        String verifiedZaloId = (accessToken != null && !accessToken.isEmpty())
+                ? zaloAccountService.verifyAccessToken(accessToken)
+                : zaloId;
+
+        if (verifiedZaloId == null || verifiedZaloId.isEmpty()) {
             throw new AppException(ErrorCode.MISSING_ZALO_AUTH);
         }
 
         // Uniform 404 — prevents resource enumeration
         Application app = applicationRepository.findById(id).orElse(null);
         if (app == null || app.getZaloAccount() == null
-                || !app.getZaloAccount().getZaloId().equals(zaloId)) {
+                || !app.getZaloAccount().getZaloId().equals(verifiedZaloId)) {
             throw new AppException(ErrorCode.APPLICATION_NOT_FOUND);
         }
 
